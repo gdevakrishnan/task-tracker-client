@@ -443,7 +443,7 @@ const WorkerManagement = () => {
               className="form-input"
               value={formData.salary}
               onChange={handleChange}
-              required
+              
             />
           </div>
 

@@ -9,6 +9,7 @@ import { toast } from 'react-toastify';
 import { putAttendance, getAttendance } from '../../services/attendanceService';
 import Table from '../common/Table';
 import Spinner from '../common/Spinner';
+import { Link } from 'react-router-dom';
 
 const AttendanceManagement = () => {
     const [worker, setWorker] = useState({ rfid: "" });
@@ -84,6 +85,7 @@ const AttendanceManagement = () => {
         setIsLoading(true);
         try {
             const data = await getAttendance({ subdomain });
+            console.log(data.attendance);
             setAttendanceData(Array.isArray(data.attendance) ? data.attendance : []);
         } catch (error) {
             console.error(error);
@@ -153,16 +155,16 @@ const AttendanceManagement = () => {
 
         // Create a Blob with the CSV content
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        
+
         // Create a download link and trigger the download
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        
+
         // Format current date for filename
         const today = new Date();
         const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-        
+
         link.setAttribute('download', `Attendance_Report_${formattedDate}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
@@ -188,7 +190,9 @@ const AttendanceManagement = () => {
                             className="w-8 h-8 rounded-full mr-2"
                         />
                     )}
-                    {record?.name || 'Unknown'}
+                    <Link to={`/admin/attendance/${record.worker?._id}`} className="text-blue-600 hover:underline">
+                        {record?.name || 'Unknown'}
+                    </Link>
                 </div>
             )
         },
