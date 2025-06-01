@@ -15,7 +15,8 @@ const WorkerAttendance = () => {
     const [attendanceData, setAttendanceData] = useState([]);
     const { subdomain } = useContext(appContext);
     const [isLoading, setIsLoading] = useState(true);
-    const [filterDate, setFilterDate] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
     const [filteredByDateData, setFilteredByDateData] = useState([]);
     const [productivityData, setProductivityData] = useState(null);
 
@@ -47,27 +48,66 @@ const WorkerAttendance = () => {
     useEffect(() => {
         let filtered = attendanceData;
 
-        if (filterDate) {
-            filtered = filtered.filter(item =>
-                item.date && item.date.split('T')[0] === filterDate
-            );
+        // Filter by date range
+        if (fromDate || toDate) {
+            filtered = filtered.filter(item => {
+                if (!item.date) return false;
+
+                const itemDate = item.date.split('T')[0];
+
+                // If both dates are provided
+                if (fromDate && toDate) {
+                    return itemDate >= fromDate && itemDate <= toDate;
+                }
+                // If only from date is provided
+                else if (fromDate) {
+                    return itemDate >= fromDate;
+                }
+                // If only to date is provided
+                else if (toDate) {
+                    return itemDate <= toDate;
+                }
+
+                return true;
+            });
         }
 
         setFilteredByDateData(filtered);
 
-        // Calculate productivity if both filters are applied
-        if (filterDate) {
-            const productivity = calculateWorkerProductivity(attendanceData, filterDate);
+        // Calculate productivity for the filtered date range
+        if (fromDate || toDate) {
+            const productivity = calculateWorkerProductivity(attendanceData, fromDate, toDate);
+            console.log(productivity);
             setProductivityData(productivity);
         } else {
             setProductivityData(null);
         }
-    }, [filterDate, attendanceData]);
+    }, [fromDate, toDate, attendanceData]);
 
     const handleReset = () => {
         setFilteredByDateData(attendanceData);
-        setFilterDate('');
+        setFromDate('');
+        setToDate('');
         setProductivityData(null);
+    };
+
+    // Validation to ensure from date is not greater than to date
+    const handleFromDateChange = (e) => {
+        const newFromDate = e.target.value;
+        if (toDate && newFromDate > toDate) {
+            toast.error("From date cannot be greater than To date");
+            return;
+        }
+        setFromDate(newFromDate);
+    };
+
+    const handleToDateChange = (e) => {
+        const newToDate = e.target.value;
+        if (fromDate && newToDate < fromDate) {
+            toast.error("To date cannot be less than From date");
+            return;
+        }
+        setToDate(newToDate);
     };
 
     const columns = [
@@ -147,15 +187,28 @@ const WorkerAttendance = () => {
                     </Link>
                 </div>
             </div>
-            
+
             <div className="flex justify-end space-x-4 items-center mb-6">
-                <input
-                    type="date"
-                    className="form-input w-60"
-                    placeholder="Filter by date..."
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                />
+                <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-gray-700">From:</label>
+                    <input
+                        type="date"
+                        className="form-input w-40"
+                        placeholder="From date..."
+                        value={fromDate}
+                        onChange={handleFromDateChange}
+                    />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-gray-700">To:</label>
+                    <input
+                        type="date"
+                        className="form-input w-40"
+                        placeholder="To date..."
+                        value={toDate}
+                        onChange={handleToDateChange}
+                    />
+                </div>
                 <Button
                     variant="primary"
                     className="flex items-center"
@@ -165,17 +218,33 @@ const WorkerAttendance = () => {
                 </Button>
             </div>
 
+            {/* Date Range Display */}
+            {(fromDate || toDate) && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                        <strong>Filtered Period:</strong>
+                        {fromDate && toDate ? ` ${fromDate} to ${toDate}` :
+                            fromDate ? ` From ${fromDate} onwards` :
+                                ` Up to ${toDate}`}
+                        <span className="ml-4 text-blue-600">
+                            ({filteredByDateData.length} record{filteredByDateData.length !== 1 ? 's' : ''} found)
+                        </span>
+                    </p>
+                </div>
+            )}
+
             {/* Productivity Cards */}
             {productivityData && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <ProductivityCard
                         title="Working Hours"
-                        value={productivityData.actual_working_minutes.toFixed(2)}
+                        value={Math.floor(productivityData.actual_working_minutes / 60)}
                         subtitle={productivityData.formatted_working_hours}
                         icon={FaClock}
                         bgColor="bg-blue-50"
                         textColor="text-blue-600"
                     />
+
                     <ProductivityCard
                         title="Permission Time"
                         value={productivityData.permission_minutes.toFixed(2)}
@@ -184,21 +253,59 @@ const WorkerAttendance = () => {
                         bgColor="bg-yellow-50"
                         textColor="text-yellow-600"
                     />
+
                     <ProductivityCard
-                        title="Total Minutes"
-                        value={productivityData.total_working_minutes.toFixed(2)}
-                        subtitle={`${Math.floor(productivityData.total_working_minutes / 60)}hrs ${Math.round(productivityData.total_working_minutes % 60)}min`}
+                        title="Delay Time"
+                        value={productivityData.delay_minutes.toFixed(2)}
+                        subtitle={`${Math.floor(productivityData.delay_minutes / 60)}hrs ${Math.round(productivityData.delay_minutes % 60)}min`}
+                        icon={FaUserClock}
+                        bgColor="bg-red-50"
+                        textColor="text-red-600"
+                    />
+
+                    <ProductivityCard
+                        title="Lunch Break"
+                        value={productivityData.lunch_break_minutes.toFixed(2)}
+                        subtitle={`${Math.floor(productivityData.lunch_break_minutes / 60)}hrs ${Math.round(productivityData.lunch_break_minutes % 60)}min`}
+                        icon={FaUserClock}
+                        bgColor="bg-orange-50"
+                        textColor="text-orange-600"
+                    />
+
+                    <ProductivityCard
+                        title="Working Days"
+                        value={productivityData.working_days}
+                        subtitle={`Total Days: ${fromDate && toDate ? Math.ceil((new Date(toDate) - new Date(fromDate)) / (1000 * 60 * 60 * 24)) + 1 : 1}`}
                         icon={FaCalculator}
                         bgColor="bg-purple-50"
                         textColor="text-purple-600"
                     />
+
                     <ProductivityCard
-                        title="Today's Salary"
-                        value={`₹${productivityData.today_salary.toFixed(2)}`}
-                        subtitle={`Deduction: ₹${productivityData.salary_deduction}`}
+                        title={fromDate && toDate ? "Total Salary" : "Today's Salary"}
+                        value={`₹${(fromDate && toDate ? productivityData.total_salary : productivityData.today_salary).toFixed(2)}`}
+                        subtitle={`Deduction: ₹${(fromDate && toDate ? productivityData.total_deduction : productivityData.salary_deduction).toFixed(2)}`}
                         icon={FaMoneyBillWave}
                         bgColor="bg-green-50"
                         textColor="text-green-600"
+                    />
+
+                    <ProductivityCard
+                        title="Overtime"
+                        value={productivityData.overtime_minutes.toFixed(2)}
+                        subtitle={`${Math.floor(productivityData.overtime_minutes / 60)}hrs ${Math.round(productivityData.overtime_minutes % 60)}min`}
+                        icon={FaClock}
+                        bgColor="bg-indigo-50"
+                        textColor="text-indigo-600"
+                    />
+
+                    <ProductivityCard
+                        title="Delay Deduction"
+                        value={`₹${productivityData.delay_deduction.toFixed(2)}`}
+                        subtitle="Calculated from delay time"
+                        icon={FaMoneyBillWave}
+                        bgColor="bg-pink-50"
+                        textColor="text-pink-600"
                     />
                 </div>
             )}
@@ -210,8 +317,8 @@ const WorkerAttendance = () => {
             ) : (
                 <Table
                     columns={columns}
-                    data={filteredByDateData.reverse()}
-                    noDataMessage="No attendance records found."
+                    data={[...filteredByDateData].reverse()}
+                    noDataMessage="No attendance records found for the selected date range."
                 />
             )}
         </Fragment>
