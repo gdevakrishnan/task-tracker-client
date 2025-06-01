@@ -71,14 +71,15 @@ const WorkerAttendance = () => {
                 return true;
             });
         }
+        console.log(filtered);
 
         setFilteredByDateData(filtered);
 
         // Calculate productivity for the filtered date range
         if (fromDate || toDate) {
             const productivity = calculateWorkerProductivity(attendanceData, fromDate, toDate);
-            console.log(productivity);
-            setProductivityData(productivity);
+            console.log('productivity: ', productivity.summary);
+            setProductivityData(productivity.summary);
         } else {
             setProductivityData(null);
         }
@@ -238,8 +239,7 @@ const WorkerAttendance = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <ProductivityCard
                         title="Working Hours"
-                        value={Math.floor(productivityData.actual_working_minutes / 60)}
-                        subtitle={productivityData.formatted_working_hours}
+                        value={`${Math.floor(productivityData.total_actual_working_minutes / 60)}hrs ${productivityData.total_actual_working_minutes % 60}min`}
                         icon={FaClock}
                         bgColor="bg-blue-50"
                         textColor="text-blue-600"
@@ -247,14 +247,13 @@ const WorkerAttendance = () => {
 
                     <ProductivityCard
                         title="Permission Time"
-                        value={productivityData.permission_minutes.toFixed(2)}
-                        subtitle={`${Math.floor(productivityData.permission_minutes / 60)}hrs ${Math.round(productivityData.permission_minutes % 60)}min`}
+                        value={`${Math.floor(productivityData.total_permission_minutes / 60)}hrs ${productivityData.total_permission_minutes % 60}min`}
                         icon={FaUserClock}
                         bgColor="bg-yellow-50"
                         textColor="text-yellow-600"
                     />
 
-                    <ProductivityCard
+                    {/* <ProductivityCard
                         title="Delay Time"
                         value={productivityData.delay_minutes.toFixed(2)}
                         subtitle={`${Math.floor(productivityData.delay_minutes / 60)}hrs ${Math.round(productivityData.delay_minutes % 60)}min`}
@@ -306,7 +305,7 @@ const WorkerAttendance = () => {
                         icon={FaMoneyBillWave}
                         bgColor="bg-pink-50"
                         textColor="text-pink-600"
-                    />
+                    /> */}
                 </div>
             )}
 
