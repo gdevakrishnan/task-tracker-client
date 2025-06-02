@@ -78,8 +78,8 @@ const WorkerAttendance = () => {
         // Calculate productivity for the filtered date range
         if (fromDate || toDate) {
             const productivity = calculateWorkerProductivity(attendanceData, fromDate, toDate);
-            console.log('productivity: ', productivity.summary);
-            setProductivityData(productivity.summary);
+            console.log('productivity: ', productivity);
+            setProductivityData(productivity);
         } else {
             setProductivityData(null);
         }
