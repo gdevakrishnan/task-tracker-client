@@ -89,7 +89,6 @@ const WorkerAttendance = () => {
                     salaryDeductionPerBreak: 10
                 }
             );
-            console.log('productivity: ', productivity);
             setProductivityData(productivity);
         } else {
             setProductivityData(null);

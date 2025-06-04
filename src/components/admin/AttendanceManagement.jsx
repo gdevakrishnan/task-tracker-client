@@ -27,6 +27,7 @@ const AttendanceManagement = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
         if (!subdomain || subdomain === 'main') {
             toast.error("Subdomain not found, check the URL.");
             return;
@@ -37,8 +38,22 @@ const AttendanceManagement = () => {
             return;
         }
 
+        // Check if attendance was already marked recently (within last 5 minutes)
+        const lastPunchTime = localStorage.getItem(`lastPunch_${worker.rfid}_${subdomain}`);
+        const currentTime = Date.now();
+        const cooldownPeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        if (lastPunchTime && (currentTime - parseInt(lastPunchTime)) < cooldownPeriod) {
+            const remainingTime = Math.ceil((cooldownPeriod - (currentTime - parseInt(lastPunchTime))) / 60000);
+            toast.error(`Duplicate Punch, Please wait ${remainingTime} minute(s) before marking attendance again.`);
+            return;
+        }
+
         putAttendance({ rfid: worker.rfid, subdomain })
             .then(response => {
+                // Store the current punch time
+                localStorage.setItem(`lastPunch_${worker.rfid}_${subdomain}`, currentTime.toString());
+
                 toast.success(response.message || "Attendance marked successfully!");
                 if (subdomain && subdomain !== 'main') {
                     fetchAttendanceData();
