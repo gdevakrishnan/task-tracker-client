@@ -9,6 +9,7 @@ import Table from '../common/Table';
 import TaskSpinner from '../common/Spinner';
 import { GrPowerReset } from "react-icons/gr";
 import { calculateWorkerProductivity } from '../../utils/productivityCalculator';
+import ProductivityDisplay from './ProductivityDisplay';
 
 const WorkerAttendance = () => {
     const { id } = useParams();
@@ -77,7 +78,17 @@ const WorkerAttendance = () => {
 
         // Calculate productivity for the filtered date range
         if (fromDate || toDate) {
-            const productivity = calculateWorkerProductivity(attendanceData, fromDate, toDate);
+            const productivity = calculateWorkerProductivity(
+                attendanceData,
+                fromDate,
+                toDate,
+                {
+                    considerOvertime: false,
+                    deductSalary: true,
+                    permissionTimeMinutes: 15,
+                    salaryDeductionPerBreak: 10
+                }
+            );
             console.log('productivity: ', productivity);
             setProductivityData(productivity);
         } else {
@@ -158,21 +169,6 @@ const WorkerAttendance = () => {
         }
     ];
 
-    const ProductivityCard = ({ title, value, subtitle, icon: Icon, bgColor, textColor }) => (
-        <div className={`${bgColor} rounded-lg p-6 shadow-md border`}>
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-sm font-medium text-gray-600 mb-1">{title}</h3>
-                    <p className={`text-2xl font-bold ${textColor} mb-1`}>{value}</p>
-                    {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-                </div>
-                <div className={`p-3 rounded-full ${textColor} bg-opacity-10`}>
-                    <Icon className="w-6 h-6" />
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <Fragment>
             <div className="flex justify-between items-center mb-6 mt-4">
@@ -236,77 +232,7 @@ const WorkerAttendance = () => {
 
             {/* Productivity Cards */}
             {productivityData && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <ProductivityCard
-                        title="Working Hours"
-                        value={`${Math.floor(productivityData.total_actual_working_minutes / 60)}hrs ${productivityData.total_actual_working_minutes % 60}min`}
-                        icon={FaClock}
-                        bgColor="bg-blue-50"
-                        textColor="text-blue-600"
-                    />
-
-                    <ProductivityCard
-                        title="Permission Time"
-                        value={`${Math.floor(productivityData.total_permission_minutes / 60)}hrs ${productivityData.total_permission_minutes % 60}min`}
-                        icon={FaUserClock}
-                        bgColor="bg-yellow-50"
-                        textColor="text-yellow-600"
-                    />
-
-                    {/* <ProductivityCard
-                        title="Delay Time"
-                        value={productivityData.delay_minutes.toFixed(2)}
-                        subtitle={`${Math.floor(productivityData.delay_minutes / 60)}hrs ${Math.round(productivityData.delay_minutes % 60)}min`}
-                        icon={FaUserClock}
-                        bgColor="bg-red-50"
-                        textColor="text-red-600"
-                    />
-
-                    <ProductivityCard
-                        title="Lunch Break"
-                        value={productivityData.lunch_break_minutes.toFixed(2)}
-                        subtitle={`${Math.floor(productivityData.lunch_break_minutes / 60)}hrs ${Math.round(productivityData.lunch_break_minutes % 60)}min`}
-                        icon={FaUserClock}
-                        bgColor="bg-orange-50"
-                        textColor="text-orange-600"
-                    />
-
-                    <ProductivityCard
-                        title="Working Days"
-                        value={productivityData.working_days}
-                        subtitle={`Total Days: ${fromDate && toDate ? Math.ceil((new Date(toDate) - new Date(fromDate)) / (1000 * 60 * 60 * 24)) + 1 : 1}`}
-                        icon={FaCalculator}
-                        bgColor="bg-purple-50"
-                        textColor="text-purple-600"
-                    />
-
-                    <ProductivityCard
-                        title={fromDate && toDate ? "Total Salary" : "Today's Salary"}
-                        value={`₹${(fromDate && toDate ? productivityData.total_salary : productivityData.today_salary).toFixed(2)}`}
-                        subtitle={`Deduction: ₹${(fromDate && toDate ? productivityData.total_deduction : productivityData.salary_deduction).toFixed(2)}`}
-                        icon={FaMoneyBillWave}
-                        bgColor="bg-green-50"
-                        textColor="text-green-600"
-                    />
-
-                    <ProductivityCard
-                        title="Overtime"
-                        value={productivityData.overtime_minutes.toFixed(2)}
-                        subtitle={`${Math.floor(productivityData.overtime_minutes / 60)}hrs ${Math.round(productivityData.overtime_minutes % 60)}min`}
-                        icon={FaClock}
-                        bgColor="bg-indigo-50"
-                        textColor="text-indigo-600"
-                    />
-
-                    <ProductivityCard
-                        title="Delay Deduction"
-                        value={`₹${productivityData.delay_deduction.toFixed(2)}`}
-                        subtitle="Calculated from delay time"
-                        icon={FaMoneyBillWave}
-                        bgColor="bg-pink-50"
-                        textColor="text-pink-600"
-                    /> */}
-                </div>
+                <ProductivityDisplay productivityData={productivityData} />
             )}
 
             {isLoading ? (
