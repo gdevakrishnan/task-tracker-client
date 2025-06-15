@@ -119,7 +119,7 @@ const WorkerLayout = ({ children }) => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar
         links={sidebarLinks}
-        logoText="Worker Dashboard"
+        logoText="Employee Dashboard"
         user={{
           ...user,
           displayName: `${user.name} (${user.department})` // Show name and department

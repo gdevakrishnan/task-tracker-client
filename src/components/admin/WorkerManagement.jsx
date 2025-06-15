@@ -214,10 +214,10 @@ const WorkerManagement = () => {
       generateQRCode(trimmedUsername, formData.rfid);
       setWorkers(prev => [...prev, newWorker]);
       setIsAddModalOpen(false);
-      toast.success('Worker added successfully');
+      toast.success('Employee added successfully');
     } catch (error) {
-      console.error('Add Worker Error:', error);
-      toast.error(error.message || 'Failed to add worker');
+      console.error('Add Employee Error:', error);
+      toast.error(error.message || 'Failed to add employee');
     }
   };
 
@@ -276,11 +276,11 @@ const WorkerManagement = () => {
       );
 
       setIsEditModalOpen(false);
-      toast.success('Worker updated successfully');
+      toast.success('Employee updated successfully');
       loadData();
     } catch (error) {
       console.error('Update Error:', error);
-      toast.error(error.message || 'Failed to update worker');
+      toast.error(error.message || 'Failed to update employee');
     }
   };
   // Handle delete worker
@@ -289,9 +289,9 @@ const WorkerManagement = () => {
       await deleteWorker(selectedWorker._id);
       setWorkers(prev => prev.filter(worker => worker._id !== selectedWorker._id));
       setIsDeleteModalOpen(false);
-      toast.success('Worker deleted successfully');
+      toast.success('Employee deleted successfully');
     } catch (error) {
-      toast.error(error.message || 'Failed to delete worker');
+      toast.error(error.message || 'Failed to delete employee');
     }
   };
 
@@ -308,7 +308,7 @@ const WorkerManagement = () => {
                 ? record.photo
                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name)}`}
 
-              alt="Worker"
+              alt="Employee"
               className="w-8 h-8 rounded-full mr-2"
             />
           )}
@@ -353,13 +353,13 @@ const WorkerManagement = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Worker Management</h1>
+        <h1 className="text-2xl font-bold">Employee Management</h1>
         <Button
           variant="primary"
           onClick={openAddModal}
           className='flex items-center'
         >
-          <FaPlus className="mr-2" /> Add Worker
+          <FaPlus className="mr-2" /> Add Employee
         </Button>
       </div>
 
@@ -382,7 +382,7 @@ const WorkerManagement = () => {
           <Table
             columns={columns}
             data={filteredWorkers}
-            noDataMessage="No workers found."
+            noDataMessage="No employee found."
           />
         )}
       </Card>
@@ -508,19 +508,17 @@ const WorkerManagement = () => {
               type="submit"
               variant="primary"
             >
-              Add Worker
+              Add Employee
             </Button>
           </div>
         </form>
       </Modal>
 
       {/* Edit Worker Modal */}
-      {/* Edit Worker Modal */}
-      {/* Edit Worker Modal */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title={`Edit Worker: ${selectedWorker?.name}`}
+        title={`Edit Employee: ${selectedWorker?.name}`}
       >
         <form onSubmit={handleEditWorker}>
           <div className="form-group">
@@ -644,7 +642,7 @@ const WorkerManagement = () => {
               type="submit"
               variant="primary"
             >
-              Update Worker
+              Update Employee
             </Button>
           </div>
         </form>
@@ -653,7 +651,7 @@ const WorkerManagement = () => {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Worker"
+        title="Delete Employee"
       >
         <p className="mb-4">
           Are you sure you want to delete <strong>{selectedWorker?.name}</strong>?

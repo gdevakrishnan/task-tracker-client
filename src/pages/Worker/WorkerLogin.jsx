@@ -54,8 +54,8 @@ const WorkerLogin = () => {
       const workersData = await getPublicWorkers({ subdomain });
       setWorkers(workersData || []);
     } catch (error) {
-      console.error('Worker load error:', error);
-      toast.error('Failed to load workers. Please try again later.');
+      console.error('Employee load error:', error);
+      toast.error('Failed to load employees. Please try again later.');
     } finally {
       setIsLoadingWorkers(false);
     }
@@ -93,7 +93,7 @@ const WorkerLogin = () => {
     e.preventDefault();
 
     if (!selectedWorker || !password) {
-      toast.error('Please select a worker and enter password');
+      toast.error('Please select a employee and enter password');
       return;
     }
 
@@ -328,14 +328,14 @@ const WorkerLogin = () => {
           className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4"
         >
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
-            Worker Login
+            Employee Login
           </h1>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative flex-grow">
               <input
                 type="text"
-                placeholder="Search workers..."
+                placeholder="Search employees..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-[#1d2451]/50 border border-[#2a3260] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
@@ -366,7 +366,7 @@ const WorkerLogin = () => {
             transition={{ duration: 0.5 }}
             className="text-center py-16 text-gray-300"
           >
-            No workers found. Try adjusting your search or filter.
+            No employees found. Try adjusting your search or filter.
             <motion.button
               whileHover={{ scale: 1.1, rotate: 180 }}
               transition={{ duration: 0.5 }}
@@ -405,7 +405,7 @@ const WorkerLogin = () => {
                           ? worker.photo
                           : `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.name)}&background=0f3460&color=fff`
                       }
-                      alt="Worker"
+                      alt="Employee"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -447,7 +447,7 @@ const WorkerLogin = () => {
                           ? selectedWorker.photo
                           : `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedWorker.name)}&background=0f3460&color=fff`
                       }
-                      alt="Worker"
+                      alt="Employee"
                       className="w-full h-full object-cover"
                     />
                   </div>

@@ -74,7 +74,7 @@ const AdminLayout = () => {
     {
       to: '/admin/workers',
       icon: <FaUsers style={{ color: '#10B981' }} />, // Green for Workers
-      label: 'Workers'
+      label: 'Employees'
     },
     {
       to: '/admin/salary',

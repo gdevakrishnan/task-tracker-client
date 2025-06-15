@@ -132,7 +132,7 @@ const SalaryManagement = () => {
                                 ? record.photo
                                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name)}`}
 
-                            alt="Worker"
+                            alt="Employee"
                             className="w-8 h-8 rounded-full mr-2"
                         />
                     )}
@@ -206,7 +206,7 @@ const SalaryManagement = () => {
                     <Table
                         columns={columns}
                         data={filteredWorkers}
-                        noDataMessage="No workers found."
+                        noDataMessage="No employees found."
                     />
                 )}
             </Card>

@@ -179,7 +179,7 @@ const WorkerAttendance = () => {
                                 ? record.photo
                                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name)}`}
 
-                            alt="Worker"
+                            alt="Employee"
                             className="w-8 h-8 rounded-full mr-2"
                         />
                     )}

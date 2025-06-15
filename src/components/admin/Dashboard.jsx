@@ -123,13 +123,13 @@ const Dashboard = () => {
         <Card className="bg-blue-50 border-l-4 border-blue-500">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-1">Workers</h3>
+              <h3 className="text-lg font-semibold text-blue-800 mb-1">Employees</h3>
               <p className="text-2xl font-bold">{stats.workers}</p>
             </div>
             <FaUsers className="text-blue-500 text-3xl" />
           </div>
           <Link to="/admin/workers" className="text-blue-600 text-sm hover:underline block mt-2">
-            Manage Workers →
+            Manage Employees →
           </Link>
         </Card>
 
@@ -192,7 +192,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Top workers */}
-        <Card title="Top Workers">
+        <Card title="Top Employees">
           <div className="space-y-4">
             {topWorkers.length > 0 ? (
               topWorkers.map((worker, index) => (
@@ -217,7 +217,7 @@ const Dashboard = () => {
                 </div>
               ))
             ) : (
-              <p className="text-gray-500">No worker data available.</p>
+              <p className="text-gray-500">No employee data available.</p>
             )}
           </div>
         </Card>

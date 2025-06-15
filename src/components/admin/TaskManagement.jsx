@@ -42,7 +42,7 @@ const TaskManagement = () => {
         const safeWorkers = Array.isArray(workersData) ? workersData : [];
         
         console.log('Tasks Data:', safeTasks);
-        console.log('Workers Data:', safeWorkers);
+        console.log('Employees Data:', safeWorkers);
         
         setTasks(safeTasks);
         setWorkers(safeWorkers);
@@ -124,7 +124,7 @@ const TaskManagement = () => {
   // Table columns configuration
   const columns = [
     {
-      header: 'Worker',
+      header: 'Employee',
       accessor: 'worker',
       render: (task) => task.worker?.name || 'Unknown'
     },
@@ -196,7 +196,7 @@ const TaskManagement = () => {
             <input
               type="text"
               className="form-input"
-              placeholder="Search worker or department..."
+              placeholder="Search employee or department..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -207,7 +207,7 @@ const TaskManagement = () => {
               value={filterWorker}
               onChange={(e) => setFilterWorker(e.target.value)}
             >
-              <option value="">All Workers</option>
+              <option value="">All Employee</option>
               {workers.map((worker) => (
                 <option key={worker._id} value={worker._id}>
                   {worker.name}
@@ -258,7 +258,7 @@ const TaskManagement = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Worker</p>
+                <p className="text-sm text-gray-500">Employee</p>
                 <p className="font-medium">{selectedTask.worker?.name || 'Unknown'}</p>
               </div>
               <div>
@@ -336,7 +336,7 @@ const TaskManagement = () => {
             Resetting all tasks will:
             <ul className="list-disc ml-6 mt-2">
               <li>Delete all task submissions from the database</li>
-              <li>Reset all workers' points to zero</li>
+              <li>Reset all employee points to zero</li>
               <li>Clear all activity history</li>
             </ul>
           </p>

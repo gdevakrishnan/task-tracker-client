@@ -76,7 +76,7 @@ const Dashboard = () => {
       </Card>
 
       <CustomTaskForm />
-      <h1 className="text-2xl font-bold mb-6">Worker Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Employee Dashboard</h1>
 
       <Card className="mb-6">
         <TaskForm

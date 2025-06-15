@@ -234,7 +234,7 @@ const FoodRequestManagement = () => {
           {record?.photo && (
             <img
               src={record.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name)}`}
-              alt="Worker"
+              alt="employee"
               className="w-8 h-8 rounded-full mr-2"
             />
           )}

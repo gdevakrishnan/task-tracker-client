@@ -153,7 +153,7 @@ return (
           <input
             type="text"
             className="form-input w-full"
-            placeholder="Search by worker name, comment text..."
+            placeholder="Search by employee name, comment text..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -212,12 +212,12 @@ return (
       <div className="flex items-center">
         <div className="w-8 h-8 bg-gray-300 rounded-full mr-2 flex items-center justify-center">
           <span className="text-xs font-bold text-gray-600">
-            {(comment.worker?.name || 'UW')[0].toUpperCase()}
+            {(comment.worker?.name || 'Unknown Employee')[0].toUpperCase()}
           </span>
         </div>
         <div>
           <p className="font-medium">
-            {comment.worker?.name || 'Unknown Worker'}
+            {comment.worker?.name || 'Unknown Employee'}
           </p>
           <p className="text-xs text-gray-500">
             {comment.worker?.department?.name || 'Unassigned'}
@@ -236,11 +236,11 @@ return (
         <div className="flex items-center mb-2">
           <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-2">
             <span className="text-xs font-bold">
-              {(comment.worker?.name || 'UW')[0].toUpperCase()}
+              {(comment.worker?.name || 'Unknown Employee')[0].toUpperCase()}
             </span>
           </div>
           <p className="text-sm font-medium">
-            {comment.worker?.name || 'Unknown Worker'} sent an attachment
+            {comment.worker?.name || 'Unknown Employee'} sent an attachment
           </p>
         </div>
         
@@ -299,7 +299,7 @@ return (
       <Modal
         isOpen={isReplyModalOpen}
         onClose={() => setIsReplyModalOpen(false)}
-        title={`Reply to ${selectedComment?.worker?.name || 'Worker'}`}
+        title={`Reply to ${selectedComment?.worker?.name || 'Employee'}`}
       >
         <form onSubmit={handleSubmitReply}>
           <div className="mb-4">

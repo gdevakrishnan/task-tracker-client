@@ -190,7 +190,7 @@ const DepartmentManagement = () => {
                 {department.name}
                 </h3>
                   <p className="text-sm text-gray-500">
-                    {department.workerCount || 0} Worker{(department.workerCount || 0) !== 1 ? 's' : ''}
+                    {department.workerCount || 0} Employee{(department.workerCount || 0) !== 1 ? 's' : ''}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -317,7 +317,7 @@ const DepartmentManagement = () => {
             </p>
             <p className="mb-4 text-red-600">
               {selectedDepartment.workerCount > 0 
-                ? `This department has ${selectedDepartment.workerCount} worker(s). You cannot delete it.`
+                ? `This department has ${selectedDepartment.workerCount} employee(s). You cannot delete it.`
                 : 'This action cannot be undone.'}
             </p>
             

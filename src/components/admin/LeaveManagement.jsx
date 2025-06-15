@@ -81,7 +81,7 @@ const LeaveManagement = () => {
     <div className="border rounded-md p-4 mb-4 bg-white">
       <div className="flex justify-between">
         <div>
-          <p className="font-medium">{leave.worker?.name || 'Unknown Worker'}</p>
+          <p className="font-medium">{leave.worker?.name || 'Unknown Employee'}</p>
           <p className="text-sm text-gray-500">
             {leave.leaveType} • {new Date(leave.createdAt).toLocaleString()}
           </p>
@@ -155,7 +155,7 @@ const LeaveManagement = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by worker name or leave type"
+                    placeholder="Search by employee name or leave type"
                     className="pl-10 pr-4 py-2 w-full border rounded-md"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}

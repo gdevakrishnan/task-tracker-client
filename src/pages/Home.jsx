@@ -10,7 +10,7 @@ const Home = () => {
   const features = [
     {
       title: 'Performance Tracking',
-      description: 'Real-time monitoring of worker productivity and task completion rates.',
+      description: 'Real-time monitoring of employee productivity and task completion rates.',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -97,7 +97,7 @@ const Home = () => {
               onClick={() => navigate('/worker/login')}
               className="px-8 py-3 border-2 border-purple-600 text-purple-400 rounded-full hover:bg-purple-600/20 transition-colors"
             >
-              Worker Login
+              Employee Login
             </motion.button>
           </div>
         </div>
