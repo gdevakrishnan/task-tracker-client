@@ -32,6 +32,7 @@ import PrivateRoute from './components/common/PrivateRoute';
 import appContext from './context/AppContext';
 import { useEffect, useState } from 'react';
 import WorkerAttendance from './components/admin/WorkerAttendance';
+import Settings from './components/admin/Settings';
 
 function App() {
   // Initialize subdomain with the actual value from localStorage immediately
@@ -112,7 +113,7 @@ function App() {
             fontSize: '12px',
             zIndex: 9999 
           }}>
-            Subdomain: {subdomain || 'null'}
+            Company Name: {subdomain || 'null'}
           </div>
         )}
 
@@ -140,6 +141,7 @@ function App() {
               <Route path="food-requests" element={<FoodRequestManagement />} />
               <Route path="custom-tasks" element={<CustomTasks />} />
               <Route path="notifications" element={<NotificationManagement />} />
+              <Route path="settings" element={<Settings />} />
               {/* Catch-all route for unknown admin paths */}
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Route>

@@ -20,6 +20,7 @@ import { getAllLeaves } from '../../services/leaveService';
 import { getAllComments } from '../../services/commentService';
 import Sidebar from './Sidebar';
 import appContext from '../../context/AppContext';
+import { IoMdSettings } from 'react-icons/io';
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
@@ -132,6 +133,11 @@ const AdminLayout = () => {
       icon: <FaComments style={{ color: '#1ABC9C' }}/>,
       label: 'Comments',
       badge: newComments > 0 ? newComments : null
+    },
+    {
+      to: '/admin/settings',
+      icon: <IoMdSettings style={{ color: '#9B9B9B' }}/>,
+      label: 'Settings',
     }
   ];
 
