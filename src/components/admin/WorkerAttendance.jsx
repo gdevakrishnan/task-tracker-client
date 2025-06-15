@@ -10,6 +10,8 @@ import TaskSpinner from '../common/Spinner';
 import { GrPowerReset } from "react-icons/gr";
 import { calculateWorkerProductivity } from '../../utils/productivityCalculator';
 import ProductivityDisplay from './ProductivityDisplay';
+import api from '../../hooks/useAxios';
+import { getAuthToken } from '../../utils/authUtils';
 
 const WorkerAttendance = () => {
     const { id } = useParams();
@@ -20,6 +22,49 @@ const WorkerAttendance = () => {
     const [toDate, setToDate] = useState('');
     const [filteredByDateData, setFilteredByDateData] = useState([]);
     const [productivityData, setProductivityData] = useState(null);
+    const [settingsData, setSettingsData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchSettings = async () => {
+        if (!subdomain || subdomain === 'main') {
+            toast.error('Invalid subdomain. Please check the URL.');
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const token = getAuthToken();
+            const response = await api.get(`/settings/${subdomain}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const fetchedSettings = response.data;
+            console.log(fetchedSettings);
+
+            // Update state with fetched settings
+            setSettingsData((prevSettings) => ({
+                ...prevSettings,
+                // Attendance and productivity settings
+                considerOvertime: fetchedSettings.considerOvertime,
+                deductSalary: fetchedSettings.deductSalary,
+                permissionTimeMinutes: fetchedSettings.permissionTimeMinutes,
+                salaryDeductionPerBreak: fetchedSettings.salaryDeductionPerBreak,
+            }));
+        } catch (error) {
+            console.error('Error fetching settings!', error);
+            if (error.response?.status === 404) {
+                // Settings not found, use defaults
+                setOriginalSettings(settings);
+            } else {
+                toast.error('Failed to fetch settings');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchAttendanceData = async () => {
         setIsLoading(true);
@@ -42,6 +87,7 @@ const WorkerAttendance = () => {
 
     useEffect(() => {
         if (subdomain && subdomain !== 'main') {
+            fetchSettings();
             fetchAttendanceData();
         }
     }, [subdomain]);
@@ -83,10 +129,10 @@ const WorkerAttendance = () => {
                 fromDate,
                 toDate,
                 {
-                    considerOvertime: false,
-                    deductSalary: true,
-                    permissionTimeMinutes: 15,
-                    salaryDeductionPerBreak: 10
+                    considerOvertime: settingsData.considerOvertime,
+                    deductSalary: settingsData.deductSalary,
+                    permissionTimeMinutes: settingsData.permissionTimeMinutes,
+                    salaryDeductionPerBreak: settingsData.salaryDeductionPerBreak
                 }
             );
             setProductivityData(productivity);
