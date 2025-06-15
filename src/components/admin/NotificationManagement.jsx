@@ -138,7 +138,7 @@ const NotificationManagement = () => {
       ) : (
         <div className="space-y-4">
           {filteredNotifications.length === 0 ? (
-            <p>No notifications found.</p>
+            <p className='text-center'>No notifications found.</p>
           ) : (
             filteredNotifications.map((notification) => (
               <Card key={notification._id} className="shadow-sm border">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
 import { getMyTasks } from '../../services/taskService';
@@ -9,8 +9,12 @@ import Scoreboard from './Scoreboard';
 import Card from '../common/Card';
 import Spinner from '../common/Spinner';
 import CustomTaskForm from './CustomTaskForm';
+import { readNotification } from '../../services/notificationService';
+import appContext from '../../context/AppContext';
 
 const Dashboard = () => {
+  const { subdomain } = useContext(appContext);
+  const [notifications, setNotifications] = useState([]);
   const { user } = useAuth();
   console.log(user);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,6 +22,22 @@ const Dashboard = () => {
   const [topics, setTopics] = useState([]);
   const [columns, setColumns] = useState([]);
 
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const data = await readNotification(subdomain);
+      console.log(data.notifications);
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+    } catch (err) {
+      toast.error('Failed to fetch notifications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -74,6 +94,16 @@ const Dashboard = () => {
           Your base monthly salary is <strong>Rs.{user.salary.toFixed(2)}</strong>, and thanks to your efforts this month, your final salary is <strong>Rs.{user.finalSalary.toFixed(2)}</strong>.
         </p>
       </Card>
+
+      {
+        notifications && (
+          <Card title="Latest Notification" className='mb-6'>
+            <p>
+              {notifications[0].messageData}
+            </p>
+          </Card>
+        )
+      }
 
       <CustomTaskForm />
       <h1 className="text-2xl font-bold mb-6">Employee Dashboard</h1>
