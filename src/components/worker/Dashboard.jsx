@@ -88,18 +88,27 @@ const Dashboard = () => {
 
   return (
     <div>
-      <Card title="Greetings!" className='mb-6'>
-        <p>
-          Hi {user.username}! Welcome to <strong>{user.subdomain}</strong>. <br />
-          Your base monthly salary is <strong>Rs.{user.salary.toFixed(2)}</strong>, and thanks to your efforts this month, your final salary is <strong>Rs.{user.finalSalary.toFixed(2)}</strong>.
-        </p>
-      </Card>
+      {user?.username && user?.subdomain && typeof user.salary === 'number' && typeof user.finalSalary === 'number' ? (
+        <Card title="Greetings!" className="mb-6">
+          <p>
+            Hi {user.username}! Welcome to <strong>{user.subdomain}</strong>. <br />
+            Your base monthly salary is <strong>Rs.{user.salary.toFixed(2)}</strong>, and thanks to your efforts this month, your final salary is <strong>Rs.{user.finalSalary.toFixed(2)}</strong>.
+          </p>
+        </Card>
+      ) : user?.username ? (
+        <Card title="Greetings!" className="mb-6">
+          <p>
+            Hi {user.username}! Welcome aboard.
+          </p>
+        </Card>
+      ) : null}
+
 
       {
-        notifications && (
-          <Card title="Latest Notification" className='mb-6'>
+        Array.isArray(notifications) && notifications.length > 0 && (
+          <Card title="Latest Notification" className="mb-6">
             <p>
-              {notifications[0].messageData}
+              {notifications[0]?.messageData || "No notifications found"}
             </p>
           </Card>
         )
