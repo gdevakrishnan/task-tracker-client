@@ -197,7 +197,7 @@ const LeaveRequests = () => {
       </div>
 
       {/* Filters Card */}
-      <Card className="mb-6 overflow-hidden border border-gray-200 shadow-sm">
+      <Card className="mb-6 border-t-4 border-blue-500 overflow-hidden shadow-sm">
         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <div className="flex items-center">
             <FaFilter className="text-blue-600 mr-2" />
@@ -347,7 +347,7 @@ const LeaveRequests = () => {
       </Card>
 
       {/* Leave Requests List */}
-      <Card className="border border-gray-200 shadow-sm overflow-hidden">
+      <Card className="border-t-4 border-blue-500 overflow-hidden shadow-sm">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
           <h3 className="font-medium text-gray-700">Leave Requests</h3>
           <span className="text-sm text-gray-500">
@@ -391,13 +391,20 @@ const LeaveRequests = () => {
           <div className="divide-y divide-gray-200">
             {filteredLeaves.map((leave) => (
               <div
-                key={leave._id}
-                className={`p-4 sm:p-6 transition-all hover:bg-gray-50 ${
-                  !leave.workerViewed && (leave.status === 'Approved' || leave.status === 'Rejected')
-                    ? 'border-l-4 border-blue-500 bg-blue-50'
-                    : ''
-                }`}
-              >
+                            key={leave._id}
+                            className={`p-4 sm:p-6 transition-all hover:bg-gray-50
+                              border-4 ${
+                                leave.status === 'Approved'
+                                  ? 'border-green-500'
+                                  : leave.status === 'Rejected'
+                                    ? 'border-red-500'
+                                    : 'border-yellow-500'
+                              } ${
+                                !leave.workerViewed && (leave.status === 'Approved' || leave.status === 'Rejected')
+                                  ? 'border-l-4 border-blue-500 bg-blue-50'
+                                  : ''
+                              }`}
+                          >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-2">
                   <div>
                     <h4 className="font-medium text-gray-900 text-lg">{leave.leaveType}</h4>

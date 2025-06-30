@@ -11,6 +11,7 @@ import Table from '../common/Table';
 import Spinner from '../common/Spinner';
 import { Link } from 'react-router-dom';
 
+
 const AttendanceManagement = () => {
     const [worker, setWorker] = useState({ rfid: "" });
     const [qrText, setQrText] = useState("");
@@ -22,49 +23,53 @@ const AttendanceManagement = () => {
     const [filterDate, setFilterDate] = useState('');
     const [filterRfid, setFilterRfid] = useState('');
     const webcamRef = useRef(null);
-
+    const inputRef = useRef(null);
+    const [isPunching, setIsPunching] = useState(false);
+    
     const { subdomain } = useContext(appContext);
+    const [confirmAction, setConfirmAction] = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = e => {
         e.preventDefault();
-
         if (!subdomain || subdomain === 'main') {
-            toast.error("Subdomain not found, check the URL.");
-            return;
+          toast.error('Subdomain not found, check the URL.');
+          return;
         }
-
-        if (worker.rfid.trim() === "") {
-            toast.error("Enter the RFID");
-            return;
+        if (!worker.rfid.trim()) {
+          toast.error('Enter the RFID');
+          return;
         }
-
-        // Check if attendance was already marked recently (within last 5 minutes)
-        const lastPunchTime = localStorage.getItem(`lastPunch_${worker.rfid}_${subdomain}`);
-        const currentTime = Date.now();
-        const cooldownPeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-        if (lastPunchTime && (currentTime - parseInt(lastPunchTime)) < cooldownPeriod) {
-            const remainingTime = Math.ceil((cooldownPeriod - (currentTime - parseInt(lastPunchTime))) / 60000);
-            toast.error(`Duplicate Punch, Please wait ${remainingTime} minute(s) before marking attendance again.`);
-            return;
+        let next = 'Punch In';
+        const recs = attendanceData.filter(r => r.rfid === worker.rfid);
+        if (recs.length) {
+          const last = recs
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+          next = last.presence ? 'Punch Out' : 'Punch In';
         }
-
+        setConfirmAction(next);
+      };
+      
+      const handleCancel = () => setConfirmAction(null);
+      
+      const handleConfirm = () => {
+        setIsPunching(true);
         putAttendance({ rfid: worker.rfid, subdomain })
-            .then(response => {
-                // Store the current punch time
-                localStorage.setItem(`lastPunch_${worker.rfid}_${subdomain}`, currentTime.toString());
+          .then(res => {
+            toast.success(res.message || 'Attendance marked successfully!');
+            setWorker({ rfid: '' });
+            setConfirmAction(null);
+            fetchAttendanceData();
+          })
+          .catch(err => {
+            console.error(err);
+            toast.error(err.message || 'Failed to mark attendance.');
+          })
+          .finally(() => {
+            setIsPunching(false);
+          });
+      };
 
-                toast.success(response.message || "Attendance marked successfully!");
-                if (subdomain && subdomain !== 'main') {
-                    fetchAttendanceData();
-                }
-            })
-            .catch(error => {
-                console.error(error.message);
-                toast.error(error.message || "Failed to mark attendance. Please try again.");
-            });
-    };
-
+    
     useEffect(() => {
         const interval = setInterval(() => {
             scanQRCode();
@@ -72,6 +77,19 @@ const AttendanceManagement = () => {
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+              if (isModalOpen && inputRef.current) {
+                inputRef.current.focus();
+              }
+            }, [isModalOpen]);
+
+    useEffect(() => {
+              
+        if (isModalOpen && !confirmAction && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [confirmAction, isModalOpen]);        
 
     const scanQRCode = () => {
         if (webcamRef.current) {
@@ -116,50 +134,162 @@ const AttendanceManagement = () => {
         }
     }, [subdomain]);
 
-    const filteredAttendance = attendanceData.filter(record => {
-        const matchesName = !searchName || record?.name?.toLowerCase().includes(searchName.toLowerCase());
-        const matchesDepartment = !filterDepartment || record?.departmentName?.toLowerCase().includes(filterDepartment.toLowerCase());
-        const matchesDate = !filterDate || (record.date && record.date.startsWith(filterDate));
-        const matchesRfid = !filterRfid || record?.rfid?.toLowerCase().includes(filterRfid.toLowerCase());
-        return matchesName && matchesDepartment && matchesDate && matchesRfid;
+      
+      
+   
+// Replace the existing filteredAttendance variable with:
+const filteredAttendance = attendanceData.filter(record => {
+    const matchesName = !searchName || record?.name?.toLowerCase().includes(searchName.toLowerCase());
+    const matchesDepartment = !filterDepartment || record?.departmentName?.toLowerCase().includes(filterDepartment.toLowerCase());
+    const matchesDate = !filterDate || (record.date && record.date.startsWith(filterDate));
+    const matchesRfid = !filterRfid || record?.rfid?.toLowerCase().includes(filterRfid.toLowerCase());
+    return matchesName && matchesDepartment && matchesDate && matchesRfid;
+});
+
+const processedAttendance = processAttendanceByDay(filteredAttendance);
+
+function processAttendanceByDay(attendanceData) {
+    // Helper to parse "10:51:40 AM" to seconds from midnight
+    function parseTime12hToSeconds(timeStr) {
+        if (typeof timeStr !== 'string') return 0;
+        const [time, modifier] = timeStr.trim().split(' ');
+        if (!time) return 0;
+        let [hours, minutes, seconds] = time.split(':').map(Number);
+        hours = hours || 0;
+        minutes = minutes || 0;
+        seconds = seconds || 0;
+        if (modifier && modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+        else if (modifier && modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+        return hours * 3600 + minutes * 60 + seconds;
+    }
+
+    // Helper to parse "HH:mm:ss" duration to seconds
+    function parseDurationToSeconds(durationStr) {
+        if (typeof durationStr !== 'string') return 0;
+        const [hours, minutes, seconds] = durationStr.split(':').map(Number);
+        return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0);
+    }
+
+    // Helper to format seconds to "HH:mm:ss"
+    function formatSecondsToDuration(totalSeconds) {
+        if (isNaN(totalSeconds) || totalSeconds < 0) return '00:00:00';
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return [hours, minutes, seconds].map(v => String(v).padStart(2, '0')).join(':');
+    }
+
+    // Step 1: Create a map to hold all display data, grouped by employee and date
+    const displayGroups = {};
+    attendanceData.forEach(record => {
+        const dateKey = new Date(record.date).toISOString().split('T')[0];
+        const employeeKey = `${record.rfid || 'Unknown'}_${dateKey}`;
+        if (!displayGroups[employeeKey]) {
+            displayGroups[employeeKey] = {
+                ...record,
+                date: dateKey,
+                inTimes: [],
+                outTimes: [],
+                duration: '00:00:00',
+                latestTimestamp: 0,
+            };
+        }
+        // Update latest timestamp for sorting
+        displayGroups[employeeKey].latestTimestamp = Math.max(
+            displayGroups[employeeKey].latestTimestamp,
+            new Date(record.createdAt).getTime()
+        );
+        // Populate in/out times for display
+        if (record.presence) {
+            displayGroups[employeeKey].inTimes.push(record.time);
+        } else {
+            displayGroups[employeeKey].outTimes.push(record.time);
+        }
     });
 
+    // Step 2: Group punches by employee to process them chronologically
+    const punchesByRfid = attendanceData.reduce((acc, record) => {
+        const rfid = record.rfid || 'Unknown';
+        if (!acc[rfid]) acc[rfid] = [];
+        acc[rfid].push(record);
+        return acc;
+    }, {});
+
+    // Step 3: Process each employee's punches to calculate valid durations
+    for (const rfid in punchesByRfid) {
+        // Sort this employee's punches by time
+        const records = punchesByRfid[rfid].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        
+        const inPunchesStack = []; // Use a stack to find the most recent IN for an OUT
+        
+        for (const record of records) {
+            if (record.presence) { // It's an IN punch
+                inPunchesStack.push(record);
+            } else { // It's an OUT punch
+                if (inPunchesStack.length > 0) {
+                    const lastIn = inPunchesStack.pop(); // Pair with the most recent IN
+                    
+                    const inDate = new Date(lastIn.date).toISOString().split('T')[0];
+                    const outDate = new Date(record.date).toISOString().split('T')[0];
+
+                    // Rule: Only calculate duration if it's a same-day pair
+                    if (inDate === outDate) {
+                        const inSeconds = parseTime12hToSeconds(lastIn.time);
+                        const outSeconds = parseTime12hToSeconds(record.time);
+                        
+                        if (outSeconds > inSeconds) {
+                            const duration = outSeconds - inSeconds;
+                            const summaryKey = `${rfid}_${inDate}`;
+                            
+                            // Add the calculated duration to the correct display group
+                            if (displayGroups[summaryKey]) {
+                                const currentDurationSeconds = parseDurationToSeconds(displayGroups[summaryKey].duration);
+                                displayGroups[summaryKey].duration = formatSecondsToDuration(currentDurationSeconds + duration);
+                            }
+                        }
+                    }
+                    // If it's an overnight punch, the IN is popped from the stack and ignored, fulfilling the rule.
+                }
+                // If no matching IN punch is on the stack, this OUT punch is ignored.
+            }
+        }
+    }
+
+    // Return the processed display groups, sorted by the latest activity
+    return Object.values(displayGroups).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+}
     // Function to download attendance data as CSV
     const downloadAttendanceCSV = () => {
-        // Check if there is data to download
-        if (filteredAttendance.length === 0) {
+        if (processedAttendance.length === 0) {
             toast.warning("No attendance data to download");
             return;
         }
-
-        // Define headers for the CSV file
+    
         const headers = [
             'Name',
             'Employee ID (RFID)',
             'Department',
             'Date',
-            'Time',
-            'Status'
+            'In Times',
+            'Out Times',
+            'Duration'
         ];
-
-        // Map the data to CSV rows
-        const csvRows = filteredAttendance.map(record => [
+    
+        const csvRows = processedAttendance.map(record => [
             record?.name || 'Unknown',
             record?.rfid || 'Unknown',
             record?.departmentName || 'Unknown',
-            record.date ? record.date.split('T')[0] : 'Unknown',
-            record.time || 'Unknown',
-            record.presence ? 'IN' : 'OUT'
+            record.date || 'Unknown',
+            record.inTimes.join(' | '),
+            record.outTimes.join(' | '),
+            record.duration || '00:00:00'
         ]);
-
-        // Prepare CSV content
+    
         let csvContent = headers.join(',') + '\n';
         csvRows.forEach(row => {
-            // Handle any commas or quotes in the data
             const formattedRow = row.map(cell => {
                 if (cell === null || cell === undefined) return '';
                 const cellString = String(cell);
-                // If the cell contains commas, quotes, or newlines, wrap it in quotes
                 if (cellString.includes(',') || cellString.includes('"') || cellString.includes('\n')) {
                     return `"${cellString.replace(/"/g, '""')}"`;
                 }
@@ -167,25 +297,20 @@ const AttendanceManagement = () => {
             });
             csvContent += formattedRow.join(',') + '\n';
         });
-
-        // Create a Blob with the CSV content
+    
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-        // Create a download link and trigger the download
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-
-        // Format current date for filename
+    
         const today = new Date();
-        const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-
+        const formattedDate = today.toISOString().split('T')[0];
         link.setAttribute('download', `Attendance_Report_${formattedDate}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
+    
         toast.success("Attendance report downloaded successfully!");
     };
 
@@ -200,7 +325,6 @@ const AttendanceManagement = () => {
                             src={record.photo
                                 ? record.photo
                                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name)}`}
-
                             alt="Employee"
                             className="w-8 h-8 rounded-full mr-2"
                         />
@@ -224,19 +348,37 @@ const AttendanceManagement = () => {
         {
             header: 'Date',
             accessor: 'date',
-            render: (record) => record.date ? record.date.split('T')[0] : 'Unknown'
+            render: (record) => record.date || 'Unknown'
         },
         {
-            header: 'Time',
-            accessor: 'time',
-            render: (record) => record.time || 'Unknown'
+            header: 'In Time',
+            accessor: 'inTimes',
+            render: (record) => (
+                <div>
+                    {record.inTimes.map((time, index) => (
+                        <div key={index} className="text-green-600">{time}</div>
+                    ))}
+                </div>
+            )
         },
         {
-            header: 'Presence',
-            accessor: 'presence',
-            render: (record) => record.presence ? <p className='text-green-600'>IN</p> : <p className='text-red-600'>OUT</p>
+            header: 'Out Time',
+            accessor: 'outTimes',
+            render: (record) => (
+                <div>
+                    {record.outTimes.map((time, index) => (
+                        <div key={index} className="text-red-600">{time}</div>
+                    ))}
+                </div>
+            )
+        },
+        {
+            header: 'Duration',
+            accessor: 'duration',
+            render: (record) => record.duration || '00:00:00'
         }
     ];
+
 
     return (
         <Fragment>
@@ -299,58 +441,77 @@ const AttendanceManagement = () => {
                 ) : (
                     <Table
                         columns={columns}
-                        data={filteredAttendance.reverse()}
+                        data={processedAttendance}
                         noDataMessage="No attendance records found."
                     />
                 )}
 
                 <Modal
-                    isOpen={isModalOpen}
-                    onClose={() => {
-                        setIsModalOpen(false);
-                        setWorker({ rfid: "" });
-                    }}
-                    title="RFID Input & QR Scanner"
-                    size="md"
+                isOpen={isModalOpen}
+                title="RFID Input & QR Scanner"
+                size="md"
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setWorker({ rfid: '' });
+                    setConfirmAction(null);
+                }}
                 >
-                    <form onSubmit={handleSubmit} className="mb-4">
-                        <input
-                            type="text"
-                            name="rfid"
-                            id="rfid"
-                            value={worker.rfid}
-                            onChange={(e) =>
-                                setWorker({ ...worker, [e.target.id]: e.target.value })
+                {confirmAction ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+                        <h2 className="text-xl font-semibold mb-4">
+                        Do you want to{' '}
+                        <span
+                            className={
+                            confirmAction === 'Punch In'
+                                ? 'text-green-600'
+                                : 'text-red-600'
                             }
+                        >
+                            {confirmAction}
+                        </span>
+                        ?
+                        </h2>
+                        <div className="flex justify-center space-x-4">
+                        <Button variant="secondary" onClick={handleCancel} disabled={isPunching}>
+                            cancle
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleConfirm}
+                            disabled={isPunching}
+                            className="flex items-center justify-center"
+                        >
+                            {isPunching ? <Spinner size="sm" /> : confirmAction}
+                        </Button>
+                        </div>
+                    </div>
+                      
+                    ) : (
+                        <form onSubmit={handleSubmit} className="mb-4">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={worker.rfid}
+                            onChange={e => setWorker({ rfid: e.target.value })}
                             placeholder="RFID"
                             className="border p-2 mb-2 w-full"
                         />
-                        <Button
-                            variant="primary"
-                            type="submit"
-                            className="bg-blue-500 text-white px-4 py-2 w-full"
-                        >
+                        <Button type="submit" variant="primary" className="w-full">
                             Submit
                         </Button>
-                    </form>
-
-                    <Webcam
-                        ref={webcamRef}
-                        style={{
-                            width: "100%",
-                            maxWidth: "400px",
-                            margin: "0 auto",
-                            border: "1px solid #ddd",
-                        }}
-                        videoConstraints={{
-                            facingMode: "environment",
-                        }}
-                    />
-                    {qrText && (
-                        <div style={{ marginTop: "20px" }}>
-                            <h1 className='text-lg text-center'>RFID: {qrText}</h1>
-                        </div>
+                        </form>
                     )}
+
+                <Webcam
+                    ref={webcamRef}
+                    style={{ width: '100%', maxWidth: 400, margin: '0 auto', border: '1px solid #ddd' }}
+                    videoConstraints={{ facingMode: 'environment' }}
+                />
+                {qrText && (
+                    <div style={{ marginTop: 20 }}>
+                    <h1 className="text-lg text-center">RFID: {qrText}</h1>
+                    </div>
+                )}
                 </Modal>
             </div>
         </Fragment>

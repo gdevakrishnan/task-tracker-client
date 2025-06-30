@@ -96,27 +96,27 @@ const Sidebar = ({
         <nav className="mt-5 px-2 space-y-1">
           {links.map((link) => (
             <Link
-  key={link.to}
-  to={link.to}
-  className={`
-    group flex items-center px-2 py-2 text-base font-medium rounded-md 
-    hover:bg-gray-700 hover:text-white 
-    transition-all duration-300 
-    ${location.pathname === link.to 
-      ? 'bg-gray-900 text-white' 
-      : 'text-gray-300'
-    }
-    hover:pl-4 // Slide effect
-  `}
-  onClick={closeSidebar}
->
-  {link.icon && (
-    <span className="mr-3 h-6 w-6 flex items-center justify-center">
-      {link.icon}
-    </span>
-  )}
-  {link.label}
-</Link>
+              key={link.to}
+              to={link.to}
+              className={`
+                group flex items-center px-2 py-2 text-base font-medium rounded-md 
+                hover:bg-gray-700 hover:text-white 
+                transition-all duration-300 
+                ${location.pathname === link.to 
+                  ? 'bg-gray-900 text-white' 
+                  : 'text-gray-300'
+                }
+                hover:pl-4 // Slide effect
+              `}
+              onClick={closeSidebar}
+            >
+              {link.icon && (
+                <span className="mr-3 h-6 w-6 flex items-center justify-center">
+                  {link.icon}
+                </span>
+              )}
+              {link.label}
+            </Link>
           ))}
         </nav>
 

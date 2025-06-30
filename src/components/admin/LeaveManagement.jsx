@@ -4,6 +4,7 @@ import { FaChevronDown, FaChevronUp, FaSearch } from 'react-icons/fa';
 import { getAllLeaves, markLeavesAsViewedByAdmin, updateLeaveStatus } from '../../services/leaveService';
 import appContext from '../../context/AppContext';
 import Spinner from '../common/Spinner';
+import Card from '../common/Card';
 
 const LeaveManagement = () => {
   const [leaves, setLeaves] = useState([]);
@@ -12,7 +13,6 @@ const LeaveManagement = () => {
   const [processing, setProcessing] = useState({});
   const [showAllLeaves, setShowAllLeaves] = useState(false);
   const [activeView, setActiveView] = useState('all');
-
   const [searchTerm, setSearchTerm] = useState('');
   const { subdomain } = useContext(appContext);
 
@@ -78,7 +78,13 @@ const LeaveManagement = () => {
   };
 
   const LeaveItem = ({ leave }) => (
-    <div className="border rounded-md p-4 mb-4 bg-white">
+    <Card
+    className={`mb-4 border-t-4 ${
+      leave.status === 'Approved' ? 'border-green-500' :
+      leave.status === 'Rejected' ? 'border-red-500' :
+      'border-yellow-500'
+    }`}
+  >
       <div className="flex justify-between">
         <div>
           <p className="font-medium">{leave.worker?.name || 'Unknown Employee'}</p>
@@ -124,7 +130,7 @@ const LeaveManagement = () => {
           </button>
         </div>
       )}
-    </div>
+    </Card>
   );
 
   const displayLeaves = showAllLeaves ? filteredLeaves : filteredLeaves.slice(0, 5);

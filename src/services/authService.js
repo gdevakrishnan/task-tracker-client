@@ -24,7 +24,7 @@ export const login = async (credentials, userType) => {
     const response = await api.post(`/auth/${userType}`, credentials);
     const userData = response.data;
     
-    // Include department information
+    // Include department and salary information when saving to localStorage
     localStorage.setItem('token', userData.token);
     localStorage.setItem('tasktracker-subdomain', userData.subdomain);
     localStorage.setItem('user', JSON.stringify({
@@ -34,8 +34,11 @@ export const login = async (credentials, userType) => {
       rfid: userData.rfid,
       email: userData.email,
       role: userData.role,
-      name: userData.name, // Add worker's full name
-      department: userData.department // Add department name
+      name: userData.name,
+      department: userData.department,
+      // Add these two lines to save salary information
+      salary: userData.salary,
+      finalSalary: userData.finalSalary
     }));
 
     return userData;

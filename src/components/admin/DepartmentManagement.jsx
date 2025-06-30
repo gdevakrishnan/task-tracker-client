@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext,useRef } from 'react';
 import { toast } from 'react-toastify';
-import { FaPlus, FaTrash, FaEdit } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaEdit,FaUserFriends } from 'react-icons/fa';
 import { getDepartments, createDepartment, deleteDepartment,updateDepartment } from '../../services/departmentService';
 import Card from '../common/Card';
 import Button from '../common/Button';
@@ -9,6 +9,7 @@ import Spinner from '../common/Spinner';
 import appContext from '../../context/AppContext';
 
 const DepartmentManagement = () => {
+  const departmentInputRef = useRef(null);
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [departmentName, setDepartmentName] = useState('');
@@ -17,8 +18,26 @@ const DepartmentManagement = () => {
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [viewEmployeesModalOpen, setViewEmployeesModalOpen] = useState(false);
+  const [viewingDepartmentEmployees, setViewingDepartmentEmployees] = useState([]);
 
+  const handleViewEmployees = (department) => {
+    if (!Array.isArray(department.employees)) {
+      toast.warn("No employee data available for this department.");
+      return;
+    }
+  
+    setViewingDepartmentEmployees(department.employees); // expected: array of { name, photo }
+    setViewEmployeesModalOpen(true);
+  };
+  
   const { subdomain } = useContext(appContext);
+
+  useEffect(() => {
+    if (isAddModalOpen && departmentInputRef.current) {
+      setTimeout(() => departmentInputRef.current.focus(), 100);
+    }
+  }, [isAddModalOpen]);
 
   const loadDepartments = async () => {
     setIsLoading(true);
@@ -185,14 +204,27 @@ const DepartmentManagement = () => {
                 key={department._id} 
                 className="bg-white border rounded-lg p-4 flex justify-between items-center"
               >
+                {/* …inside your departments.map(…) */}
                 <div>
-                <h3 className="text-lg font-medium">
-                {department.name}
-                </h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-lg font-medium">{department.name}</h3>
+                  <button
+                    onClick={() => handleViewEmployees(department)}
+                    className="
+                      inline-flex items-center
+                      text-indigo-600 font-semibold
+                      hover:text-indigo-800 active:text-indigo-900
+                      cursor-pointer
+                      transform hover:scale-105
+                      transition-transform duration-75 ease-in-out
+                      focus:outline-none
+                    "
+                  >
+                    <FaUserFriends className="inline mr-1 align-text-bottom" />
                     {department.workerCount || 0} Employee{(department.workerCount || 0) !== 1 ? 's' : ''}
-                  </p>
+                  </button>
+
                 </div>
+
                 <div className="flex items-center space-x-2">
                   <button
                     className="text-blue-500 hover:text-blue-700 mr-2"
@@ -220,15 +252,16 @@ const DepartmentManagement = () => {
       </Card>
   
       {/* Add Department Modal */}
-      <Modal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         title="Add Department"
       >
         <form onSubmit={handleAddDepartment}>
           <div className="form-group mb-4">
             <label className="form-label">Department Name</label>
             <input
+              ref={departmentInputRef}
               type="text"
               className="form-input"
               value={departmentName}
@@ -239,24 +272,16 @@ const DepartmentManagement = () => {
             />
           </div>
           <div className="flex justify-end mt-6 space-x-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsAddModalOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              variant="primary" 
-              disabled={!departmentName.trim()}
-            >
+            <Button type="submit" variant="primary" disabled={!departmentName.trim()}>
               Add Department
             </Button>
           </div>
         </form>
       </Modal>
-  
+
       {/* Edit Department Modal */}
       <Modal 
         isOpen={isEditModalOpen} 
@@ -341,6 +366,29 @@ const DepartmentManagement = () => {
           </div>
         )}
       </Modal>
+      <Modal 
+          isOpen={viewEmployeesModalOpen} 
+          onClose={() => setViewEmployeesModalOpen(false)} 
+          title="Department Employees"
+      >
+          {viewingDepartmentEmployees.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No employees found in this department.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {viewingDepartmentEmployees.map((emp, idx) => (
+                <div key={idx} className="flex items-center space-x-4 bg-gray-50 p-3 rounded shadow-sm">
+                  <img 
+                    src={emp.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}`}
+                    alt={emp.name}
+                    className="w-12 h-12 rounded-full"
+                  />
+                  <span className="text-md font-medium">{emp.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+      </Modal>
+
     </div>
   );
 }

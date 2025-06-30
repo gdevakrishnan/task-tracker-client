@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext,useRef } from 'react';
 import { toast } from 'react-toastify';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { getWorkers, createWorker, updateWorker, deleteWorker, getUniqueId } from '../../services/workerService';
@@ -10,13 +10,19 @@ import Modal from '../common/Modal';
 import Spinner from '../common/Spinner';
 import appContext from '../../context/AppContext';
 import QRCode from 'qrcode';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const WorkerManagement = () => {
+  const nameInputRef = useRef(null);
   const [workers, setWorkers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [showEditConfirmPassword, setShowEditConfirmPassword] = useState(false);
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     setFormData(prev => ({ ...prev, photo: file }));
@@ -102,6 +108,12 @@ const WorkerManagement = () => {
         (worker.department && worker.department.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     : [];
+
+    useEffect(() => {
+          if (isAddModalOpen) {
+            nameInputRef.current?.focus();
+          }
+        }, [isAddModalOpen]);
 
   // Open add worker modal
   const openAddModal = () => {
@@ -397,6 +409,7 @@ const WorkerManagement = () => {
           <div className="form-group">
             <label htmlFor="name" className="form-label">Name</label>
             <input
+              ref={nameInputRef}
               type="text"
               id="name"
               name="name"
@@ -447,17 +460,24 @@ const WorkerManagement = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group relative">
             <label htmlFor="password" className="form-label">Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               id="password"
               name="password"
-              className="form-input"
+              className="form-input pr-12"
               value={formData.password}
               onChange={handleChange}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              className="absolute right-3 top-11 transform -translate-y-1/2 text-gray-600"
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
 
           <div className="form-group">
@@ -561,30 +581,44 @@ const WorkerManagement = () => {
           </div>
 
           {/* New Password Fields */}
-          <div className="form-group">
+          <div className="form-group relative">
             <label htmlFor="edit-password" className="form-label">New Password (optional)</label>
             <input
-              type="password"
+              type={showEditPassword ? 'text' : 'password'}
               id="edit-password"
               name="password"
-              className="form-input"
+              className="form-input pr-12"
               value={formData.password}
               onChange={handleChange}
               placeholder="Leave blank to keep current password"
             />
+            <button
+              type="button"
+              onClick={() => setShowEditPassword(v => !v)}
+              className="absolute right-3 top-11 transform -translate-y-1/2 text-gray-600"
+            >
+              {showEditPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
 
-          <div className="form-group">
+          <div className="form-group relative">
             <label htmlFor="edit-confirm-password" className="form-label">Confirm New Password</label>
             <input
-              type="password"
+              type={showEditConfirmPassword ? 'text' : 'password'}
               id="edit-confirm-password"
               name="confirmPassword"
-              className="form-input"
-              value={formData.confirmPassword || ''}
+              className="form-input pr-12"
+              value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm new password"
             />
+            <button
+              type="button"
+              onClick={() => setShowEditConfirmPassword(v => !v)}
+              className="absolute right-3 top-11 transform -translate-y-1/2 text-gray-600"
+            >
+              {showEditConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
 
           <div className="form-group">

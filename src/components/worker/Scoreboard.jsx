@@ -38,7 +38,16 @@ const Scoreboard = ({ department }) => {
   
   if (isLoading) {
     return (
-      <Card title="Department Scoreboard">
+      <Card
+      title={
+        <div className="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
+          </svg>
+          Department Scoreboard
+        </div>
+      }
+    >
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
@@ -48,7 +57,16 @@ const Scoreboard = ({ department }) => {
   
   if (workers.length === 0) {
     return (
-      <Card title="Department Scoreboard">
+      <Card
+      title={
+        <div className="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
+          </svg>
+          Department Scoreboard
+        </div>
+      }
+    >
         <p className="text-center py-6 text-gray-500">
           No workers found in this department.
         </p>
@@ -57,7 +75,16 @@ const Scoreboard = ({ department }) => {
   }
   
   return (
-    <Card title="Department Scoreboard">
+    <Card
+    title={
+      <div className="flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
+        </svg>
+        Department Scoreboard
+      </div>
+    }
+  >
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

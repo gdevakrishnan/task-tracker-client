@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext,useRef } from 'react';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import appContext from '../../context/AppContext';
@@ -14,6 +14,7 @@ import {
 } from '../../services/notificationService';
 
 const NotificationManagement = () => {
+  const messageInputRef = useRef(null);
   const { subdomain } = useContext(appContext);
   const [notifications, setNotifications] = useState([]);
   const [formData, setFormData] = useState({ messageData: '' });
@@ -42,6 +43,12 @@ const NotificationManagement = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+        if (isAddModalOpen) {
+          messageInputRef.current?.focus();
+        }
+      }, [isAddModalOpen]);
 
   const openAddModal = () => {
     setFormData({ messageData: '' });
@@ -174,6 +181,7 @@ const NotificationManagement = () => {
           <div className="form-group">
             <label className="form-label">Message</label>
             <textarea
+              ref={messageInputRef}
               name="messageData"
               className="form-input"
               value={formData.messageData}

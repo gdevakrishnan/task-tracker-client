@@ -276,7 +276,7 @@ const FoodRequestManagement = () => {
       </div>
 
       {/* Email Reports Control */}
-      <Card className="p-4">
+      <Card className="hover:border hover:border-dashed hover:border-purple-500 transition-all">
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold">Email Reports</h3>
@@ -307,7 +307,7 @@ const FoodRequestManagement = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Individual Meal Cards */}
         {['breakfast', 'lunch', 'dinner'].map(meal => (
-          <Card key={meal} className="p-4">
+          <Card key={meal} className="p-4 hover:border hover:border-dashed hover:border-pink-500 transition-all">
             <div className="flex justify-between items-start mb-3">
               <h3 className="text-lg font-semibold capitalize">{meal}</h3>
               {getMealStatusBadge(meal)}
@@ -356,7 +356,8 @@ const FoodRequestManagement = () => {
         ))}
 
         {/* Total Summary Card */}
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 hover:border hover:border-dashed hover:border-blue-300 transition-all">
+
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Today</h3>
           <div className="text-3xl font-bold text-indigo-600 mb-2">
             {summary.total}
@@ -368,7 +369,7 @@ const FoodRequestManagement = () => {
       </div>
 
       {/* Requests Table */}
-      <Card>
+      <Card className="hover:border hover:border-dashed hover:border-purple-500 transition-all">
         <div className="mb-4 flex justify-between items-center">
           <h2 className="text-xl font-bold">Today's Requests</h2>
           

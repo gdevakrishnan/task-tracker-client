@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext,useRef } from 'react';
 import { toast } from 'react-toastify';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { getTopics, createTopic, updateTopic, deleteTopic } from '../../services/topicService';
@@ -11,6 +11,7 @@ import Modal from '../common/Modal';
 import Spinner from '../common/Spinner';
 
 const TopicManagement = () => {
+  const nameInputRef = useRef(null);
   const [topics, setTopics] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +67,12 @@ const TopicManagement = () => {
       topic.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
       (filterDepartment === '' || topic.department === filterDepartment || topic.department === 'all')
   );
+
+  useEffect(() => {
+        if (isAddModalOpen) {
+          nameInputRef.current?.focus();
+        }
+      }, [isAddModalOpen]);
   
   // Open add topic modal
   const openAddModal = () => {
@@ -256,6 +263,7 @@ const TopicManagement = () => {
           <div className="form-group">
             <label htmlFor="name" className="form-label">Topic Name</label>
             <input
+              ref={nameInputRef}
               type="text"
               id="name"
               name="name"

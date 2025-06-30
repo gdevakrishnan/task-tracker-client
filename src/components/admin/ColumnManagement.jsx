@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef  } from 'react';
 import { toast } from 'react-toastify';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { getColumns, createColumn, updateColumn, deleteColumn } from '../../services/columnService';
@@ -11,6 +11,7 @@ import Modal from '../common/Modal';
 import Spinner from '../common/Spinner';
 
 const ColumnManagement = () => {
+  const nameInputRef = useRef(null);
   const [columns, setColumns] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +90,12 @@ const ColumnManagement = () => {
         return nameMatch && departmentMatch;
       })
     : [];
+
+    useEffect(() => {
+          if (isAddModalOpen) {
+           nameInputRef.current?.focus();
+          }
+        }, [isAddModalOpen]);
   
   // Open add column modal
   const openAddModal = () => {
@@ -277,6 +284,7 @@ const ColumnManagement = () => {
           <div className="form-group">
             <label htmlFor="name" className="form-label">Column Name</label>
             <input
+              ref={nameInputRef}
               type="text"
               id="name"
               name="name"

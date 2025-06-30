@@ -120,7 +120,8 @@ const Dashboard = () => {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-blue-50 border-l-4 border-blue-500">
+      <Card className="bg-blue-50 border-l-4 border-blue-500 hover:border hover:border-dashed hover:border-blue-500">
+
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-blue-800 mb-1">Employees</h3>
@@ -133,7 +134,8 @@ const Dashboard = () => {
           </Link>
         </Card>
 
-        <Card className="bg-green-50 border-l-4 border-green-500">
+        <Card className="bg-green-50 border-l-4 border-green-500 hover:border hover:border-dashed hover:border-green-500">
+
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-green-800 mb-1">Tasks</h3>
@@ -146,7 +148,7 @@ const Dashboard = () => {
           </Link>
         </Card>
 
-        <Card className="bg-purple-50 border-l-4 border-purple-500">
+        <Card className="bg-purple-50 border-l-4 border-purple-500 hover:border hover:border-dashed hover:border-purple-500">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-purple-800 mb-1">Topics</h3>
@@ -159,7 +161,7 @@ const Dashboard = () => {
           </Link>
         </Card>
 
-        <Card className="bg-indigo-50 border-l-4 border-indigo-500">
+        <Card className="bg-indigo-50 border-l-4 border-indigo-500 hover:border hover:border-dashed hover:border-indigo-500">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-indigo-800 mb-1">Columns</h3>
@@ -175,7 +177,8 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Leave stats */}
-        <Card title="Leave Requests">
+        <Card title="Leave Requests" className="hover:border hover:border-dashed hover:border-pink-500">
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-yellow-50 p-4 rounded-lg">
               <h4 className="text-lg font-semibold text-yellow-800">Pending</h4>
@@ -192,7 +195,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Top workers */}
-        <Card title="Top Employees">
+        <Card title="Top Employees" className="hover:border hover:border-dashed hover:border-green-500">
           <div className="space-y-4">
             {topWorkers.length > 0 ? (
               topWorkers.map((worker, index) => (
