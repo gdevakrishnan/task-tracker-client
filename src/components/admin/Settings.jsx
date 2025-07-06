@@ -14,7 +14,9 @@ import {
     FiDollarSign,
     FiUser,
     FiToggleLeft,
-    FiToggleRight
+    FiToggleRight,
+    FiPlus,
+    FiTrash2
 } from 'react-icons/fi';
 import Button from '../common/Button';
 import Card from '../common/Card';
@@ -60,7 +62,30 @@ const Settings = () => {
         considerOvertime: false,
         deductSalary: true,
         permissionTimeMinutes: 15,
-        salaryDeductionPerBreak: 10
+        salaryDeductionPerBreak: 10,
+
+        // Batches and lunch
+        batches: [
+            {
+                batchName: 'Full Time',
+                from: '09:00',
+                to: '19:00'
+            }
+        ],
+        lunchFrom: '12:00',
+        lunchTo: '13:00',
+        intervals: [
+            {
+                intervalName: 'interval1',
+                from: '10:15',
+                to: '10:30'
+            },
+            {
+                intervalName: 'interval2',
+                from: '14:15',
+                to: '14:30'
+            }
+        ]
     });
 
     const formatTimeTo12Hour = (time24) => {
@@ -129,6 +154,15 @@ const Settings = () => {
                 deductSalary: fetchedSettings.deductSalary,
                 permissionTimeMinutes: fetchedSettings.permissionTimeMinutes,
                 salaryDeductionPerBreak: fetchedSettings.salaryDeductionPerBreak,
+
+                // Batches and lunch settings
+                batches: fetchedSettings.batches || [{ batchName: 'Full Time', from: '09:00', to: '19:00' }],
+                lunchFrom: fetchedSettings.lunchFrom || '12:00',
+                lunchTo: fetchedSettings.lunchTo || '13:00',
+                intervals: fetchedSettings.intervals || [
+                    { intervalName: 'interval1', from: '10:15', to: '10:30' },
+                    { intervalName: 'interval2', from: '14:15', to: '14:30' }
+                ]
             }));
 
             setOriginalSettings(fetchedSettings);
@@ -257,6 +291,76 @@ const Settings = () => {
             autoSwitchKey: 'dinnerAutoSwitch'
         }
     ];
+
+    const addBatch = () => {
+        const newBatch = {
+            batchName: `Batch ${settings.batches.length + 1}`,
+            from: '09:00',
+            to: '18:00'
+        };
+        const updatedSettings = {
+            ...settings,
+            batches: [...settings.batches, newBatch]
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    const deleteBatch = (index) => {
+        const updatedSettings = {
+            ...settings,
+            batches: settings.batches.filter((_, i) => i !== index)
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    const updateBatch = (index, field, value) => {
+        const updatedBatches = settings.batches.map((batch, i) =>
+            i === index ? { ...batch, [field]: value } : batch
+        );
+        const updatedSettings = {
+            ...settings,
+            batches: updatedBatches
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    const addInterval = () => {
+        const newInterval = {
+            intervalName: `interval${settings.intervals.length + 1}`,
+            from: '10:00',
+            to: '10:15'
+        };
+        const updatedSettings = {
+            ...settings,
+            intervals: [...settings.intervals, newInterval]
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    const deleteInterval = (index) => {
+        const updatedSettings = {
+            ...settings,
+            intervals: settings.intervals.filter((_, i) => i !== index)
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    const updateInterval = (index, field, value) => {
+        const updatedIntervals = settings.intervals.map((interval, i) =>
+            i === index ? { ...interval, [field]: value } : interval
+        );
+        const updatedSettings = {
+            ...settings,
+            intervals: updatedIntervals
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -571,6 +675,194 @@ const Settings = () => {
                         </div>
                     </div>
                 </Card>
+
+                {/* Work Schedule Configuration */}
+                <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <FiClock className="mr-2 text-gray-600" />
+                        Work Schedule Configuration
+                    </h2>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Batches Configuration */}
+                        <Card className="hover:shadow-lg transition-shadow duration-200">
+                            <div className="h-2 bg-gradient-to-r from-blue-400 to-indigo-400" />
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                        <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                                            <FiUser className="h-5 w-5 text-blue-600" />
+                                        </div>
+                                        Work Batches
+                                    </h3>
+                                    <Button
+                                        onClick={addBatch}
+                                        variant="secondary"
+                                        size="sm"
+                                        className="flex items-center text-xs"
+                                    >
+                                        <FiPlus className="mr-1 h-3 w-3" />
+                                        Add Batch
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-4 max-h-60 overflow-y-auto">
+                                    {settings.batches.map((batch, index) => (
+                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <input
+                                                    type="text"
+                                                    value={batch.batchName}
+                                                    onChange={(e) => updateBatch(index, 'batchName', e.target.value)}
+                                                    className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm font-medium"
+                                                    placeholder="Batch Name"
+                                                />
+                                                <Button
+                                                    onClick={() => deleteBatch(index)}
+                                                    variant="danger"
+                                                    size="sm"
+                                                    className="ml-2 p-1"
+                                                >
+                                                    <FiTrash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+                                                    <input
+                                                        type="time"
+                                                        value={batch.from}
+                                                        onChange={(e) => updateBatch(index, 'from', e.target.value)}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                                                    <input
+                                                        type="time"
+                                                        value={batch.to}
+                                                        onChange={(e) => updateBatch(index, 'to', e.target.value)}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Intervals Configuration */}
+                        <Card className="hover:shadow-lg transition-shadow duration-200">
+                            <div className="h-2 bg-gradient-to-r from-purple-400 to-pink-400" />
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                        <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                                            <FiClock className="h-5 w-5 text-purple-600" />
+                                        </div>
+                                        Break Intervals
+                                    </h3>
+                                    <Button
+                                        onClick={addInterval}
+                                        variant="secondary"
+                                        size="sm"
+                                        className="flex items-center text-xs"
+                                    >
+                                        <FiPlus className="mr-1 h-3 w-3" />
+                                        Add Interval
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-4 max-h-60 overflow-y-auto">
+                                    {settings.intervals.map((interval, index) => (
+                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <input
+                                                    type="text"
+                                                    value={interval.intervalName}
+                                                    onChange={(e) => updateInterval(index, 'intervalName', e.target.value)}
+                                                    className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm font-medium"
+                                                    placeholder="Interval Name"
+                                                />
+                                                <Button
+                                                    onClick={() => deleteInterval(index)}
+                                                    variant="danger"
+                                                    size="sm"
+                                                    className="ml-2 p-1"
+                                                >
+                                                    <FiTrash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+                                                    <input
+                                                        type="time"
+                                                        value={interval.from}
+                                                        onChange={(e) => updateInterval(index, 'from', e.target.value)}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                                                    <input
+                                                        type="time"
+                                                        value={interval.to}
+                                                        onChange={(e) => updateInterval(index, 'to', e.target.value)}
+                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Lunch Time Configuration */}
+                    <Card className="mt-6 hover:shadow-lg transition-shadow duration-200">
+                        <div className="h-2 bg-gradient-to-r from-orange-400 to-red-400" />
+                        <div className="p-6">
+                            <h3 className="text-lg font-semibold mb-6 flex items-center text-gray-900">
+                                <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                                    <FiSun className="h-5 w-5 text-orange-600" />
+                                </div>
+                                Lunch Time Configuration
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch From</label>
+                                    <input
+                                        type="time"
+                                        name="lunchFrom"
+                                        value={settings.lunchFrom}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {formatTimeTo12Hour(settings.lunchFrom)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch To</label>
+                                    <input
+                                        type="time"
+                                        name="lunchTo"
+                                        value={settings.lunchTo}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {formatTimeTo12Hour(settings.lunchTo)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
 
                 {/* Settings Summary */}
                 <Card className="bg-gradient-to-br from-gray-50 to-gray-100">
