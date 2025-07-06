@@ -99,6 +99,19 @@ const Settings = () => {
         return `${hour12}:${minutes.padStart(2, '0')} ${period}`;
     };
 
+    // Validation functions
+    const validateBatchNames = (batches) => {
+        const names = batches.map(batch => batch.batchName.trim().toLowerCase());
+        const uniqueNames = new Set(names);
+        return names.length === uniqueNames.size;
+    };
+
+    const validateIntervalNames = (intervals) => {
+        const names = intervals.map(interval => interval.intervalName.trim().toLowerCase());
+        const uniqueNames = new Set(names);
+        return names.length === uniqueNames.size;
+    };
+
     // Check if settings have changed
     const checkForChanges = (currentSettings) => {
         const changed = JSON.stringify(currentSettings) !== JSON.stringify(originalSettings);
@@ -196,6 +209,18 @@ const Settings = () => {
 
     // Handle settings save
     const handleSaveSettings = async () => {
+        // Validate batch names
+        if (!validateBatchNames(settings.batches)) {
+            toast.error('Batch names must be unique. Please check for duplicate batch names.');
+            return;
+        }
+
+        // Validate interval names
+        if (!validateIntervalNames(settings.intervals)) {
+            toast.error('Interval names must be unique. Please check for duplicate interval names.');
+            return;
+        }
+
         setSaving(true);
 
         try {
@@ -315,18 +340,6 @@ const Settings = () => {
         checkForChanges(updatedSettings);
     };
 
-    const updateBatch = (index, field, value) => {
-        const updatedBatches = settings.batches.map((batch, i) =>
-            i === index ? { ...batch, [field]: value } : batch
-        );
-        const updatedSettings = {
-            ...settings,
-            batches: updatedBatches
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
     const addInterval = () => {
         const newInterval = {
             intervalName: `interval${settings.intervals.length + 1}`,
@@ -350,10 +363,26 @@ const Settings = () => {
         checkForChanges(updatedSettings);
     };
 
+    const updateBatch = (index, field, value) => {
+        const updatedBatches = [...settings.batches];
+        updatedBatches[index] = {
+            ...updatedBatches[index],
+            [field]: value
+        };
+        const updatedSettings = {
+            ...settings,
+            batches: updatedBatches
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
     const updateInterval = (index, field, value) => {
-        const updatedIntervals = settings.intervals.map((interval, i) =>
-            i === index ? { ...interval, [field]: value } : interval
-        );
+        const updatedIntervals = [...settings.intervals];
+        updatedIntervals[index] = {
+            ...updatedIntervals[index],
+            [field]: value
+        };
         const updatedSettings = {
             ...settings,
             intervals: updatedIntervals

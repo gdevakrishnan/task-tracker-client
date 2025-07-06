@@ -20,6 +20,7 @@ const WorkerAttendance = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const [fiteredBatch, setFilteredBatch] = useState('');
     const [filteredByDateData, setFilteredByDateData] = useState([]);
     const [productivityData, setProductivityData] = useState(null);
     const [settingsData, setSettingsData] = useState(null);
@@ -42,7 +43,6 @@ const WorkerAttendance = () => {
                 }
             });
             const fetchedSettings = response.data;
-            console.log(fetchedSettings);
 
             // Update state with fetched settings
             setSettingsData((prevSettings) => ({
@@ -52,7 +52,12 @@ const WorkerAttendance = () => {
                 deductSalary: fetchedSettings.deductSalary,
                 permissionTimeMinutes: fetchedSettings.permissionTimeMinutes,
                 salaryDeductionPerBreak: fetchedSettings.salaryDeductionPerBreak,
+                batches: fetchedSettings.batches,
+                lunchFrom: fetchedSettings.lunchFrom,
+                lunchTo: fetchedSettings.lunchTo,
+                intervals: fetchedSettings.intervals
             }));
+            setFilteredBatch(fetchedSettings.batches[0].batchName);
         } catch (error) {
             console.error('Error fetching settings!', error);
             if (error.response?.status === 404) {
@@ -123,18 +128,29 @@ const WorkerAttendance = () => {
         setFilteredByDateData(filtered);
 
         // Calculate productivity for the filtered date range
-        if (fromDate || toDate) {
-            const productivity = calculateWorkerProductivity(
+        if (fromDate && toDate) {
+            console.log("productivity: ");
+            const productivityParameters = {
                 attendanceData,
                 fromDate,
                 toDate,
-                {
+                options: {
                     considerOvertime: settingsData.considerOvertime,
                     deductSalary: settingsData.deductSalary,
                     permissionTimeMinutes: settingsData.permissionTimeMinutes,
-                    salaryDeductionPerBreak: settingsData.salaryDeductionPerBreak
+                    salaryDeductionPerBreak: settingsData.salaryDeductionPerBreak,
+                    batches: settingsData.batches,
+                    lunchFrom: settingsData.lunchFrom,
+                    lunchTo: settingsData.lunchTo,
+                    intervals: settingsData.intervals,
+                    fiteredBatch: fiteredBatch
                 }
-            );
+            }
+
+            console.log(productivityParameters);
+
+            const productivity = calculateWorkerProductivity(productivityParameters);
+
             setProductivityData(productivity);
         } else {
             setProductivityData(null);
@@ -145,6 +161,7 @@ const WorkerAttendance = () => {
         setFilteredByDateData(attendanceData);
         setFromDate('');
         setToDate('');
+        setFilteredBatch('');
         setProductivityData(null);
     };
 
@@ -165,6 +182,10 @@ const WorkerAttendance = () => {
             return;
         }
         setToDate(newToDate);
+    };
+
+    const handleBatchChange = (e) => {
+        setFilteredBatch(e.target.value);
     };
 
     const columns = [
@@ -231,6 +252,21 @@ const WorkerAttendance = () => {
             </div>
 
             <div className="flex justify-end space-x-4 items-center mb-6">
+                <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-gray-700">Batch:</label>
+                    <select
+                        value={fiteredBatch}
+                        onChange={handleBatchChange}
+                        className="form-input w-40 bg-white text-gray-700" // Same class as input box
+                    >
+                        {settingsData?.batches?.map((batch) => (
+                            <option key={batch.id} value={batch.id}>
+                                {batch.batchName}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className="flex items-center space-x-2">
                     <label className="text-sm font-medium text-gray-700">From:</label>
                     <input
