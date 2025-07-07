@@ -473,7 +473,7 @@ function processAttendanceByDay(attendanceData) {
                         </h2>
                         <div className="flex justify-center space-x-4">
                         <Button variant="secondary" onClick={handleCancel} disabled={isPunching}>
-                            cancle
+                            cancel
                         </Button>
                         <Button
                             variant="primary"

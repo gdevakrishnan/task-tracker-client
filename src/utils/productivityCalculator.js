@@ -6,7 +6,6 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     options = {}
   } = productivityParameters;
 
-  // Extract options with defaults
   const {
     considerOvertime = false,
     deductSalary = true,
@@ -19,7 +18,6 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     fiteredBatch = 'Full Time'
   } = options;
 
-  // Helper function to convert time string (HH:MM or HH:MM:SS) to minutes from midnight
   const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
     const parts = timeStr.split(':').map(Number);
@@ -29,7 +27,6 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return hours * 60 + minutes + seconds / 60;
   };
 
-  // Helper function to convert minutes to time string
   const minutesToTime = (minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
@@ -37,28 +34,21 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Helper function to parse attendance time (e.g., "9:52:18 AM")
   const parseAttendanceTime = (timeStr) => {
     if (!timeStr) return 0;
-    
     const [time, period] = timeStr.split(' ');
     const [hours, minutes, seconds] = time.split(':').map(Number);
-    
     let totalMinutes = minutes + (seconds || 0) / 60;
-    
     if (period === 'AM') {
       totalMinutes += (hours === 12 ? 0 : hours) * 60;
     } else if (period === 'PM') {
       totalMinutes += (hours === 12 ? 12 : hours + 12) * 60;
     } else {
-      // 24-hour format
       totalMinutes += hours * 60;
     }
-    
     return totalMinutes;
   };
 
-  // Helper function to check if date is within range
   const isDateInRange = (date, fromDate, toDate) => {
     const checkDate = new Date(date);
     const from = new Date(fromDate);
@@ -69,147 +59,68 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return checkDate >= from && checkDate <= to;
   };
 
-  // Check if it's a single day calculation
   const isSingleDay = new Date(fromDate).toDateString() === new Date(toDate).toDateString();
 
-  // Get batch timings from filtered batch
   const selectedBatch = batches.find(batch => batch.batchName === fiteredBatch);
   const workStartTime = selectedBatch ? selectedBatch.from : '09:00';
   const workEndTime = selectedBatch ? selectedBatch.to : '19:00';
 
-  // Convert times to minutes
   const workStart = timeToMinutes(workStartTime);
   const workEnd = timeToMinutes(workEndTime);
   const lunchStart = timeToMinutes(lunchFrom);
   const lunchEnd = timeToMinutes(lunchTo);
 
-  // Calculate standard working minutes (excluding lunch and intervals)
   let standardWorkingMinutes = workEnd - workStart;
-  standardWorkingMinutes -= (lunchEnd - lunchStart); // Subtract lunch time
-
-  // Subtract interval times
+  standardWorkingMinutes -= (lunchEnd - lunchStart);
   intervals.forEach(interval => {
     const intervalStart = timeToMinutes(interval.from);
     const intervalEnd = timeToMinutes(interval.to);
     standardWorkingMinutes -= (intervalEnd - intervalStart);
   });
 
-  // Filter attendance data by date range
-  const filteredData = attendanceData.filter(record => 
+  const filteredData = attendanceData.filter(record =>
     isDateInRange(record.date, fromDate, toDate)
   );
 
   if (filteredData.length === 0) {
-    return {
-      totalDays: 0,
-      workingDays: 0,
-      totalWorkingHours: 0,
-      averageWorkingHours: 0,
-      totalPermissionTime: 0,
-      totalSalaryDeduction: 0,
-      productivityPercentage: 0,
-      dailyBreakdown: [],
-      summary: {
-        punctualityScore: 0,
-        attendanceRate: 0,
-        finalSalary: 0,
-        originalSalary: 0,
-        worker: {
-          name: '',
-          username: '',
-          rfid: '',
-          department: '',
-          email: '',
-          perDaySalary: 0
-        }
-      },
-      configuration: {
-        considerOvertime,
-        deductSalary,
-        workStartTime,
-        workEndTime,
-        lunchStartTime: lunchFrom,
-        lunchEndTime: lunchTo,
-        permissionTimeMinutes,
-        salaryDeductionPerBreak
-      }
-    };
+    return { ...emptyResponse() };
   }
 
-  // Get worker details from first record
   const worker = filteredData[0].worker || {};
-  const perDaySalary = worker.perDaySalary || 0;
-  const originalSalary = worker.salary || perDaySalary * 30; // Assuming 30 days if salary not provided
+  const originalSalary = worker.salary || 0;
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const assumedWorkingDays = daysInMonth - 4;
+
+  const perDaySalary = assumedWorkingDays > 0 ? originalSalary / assumedWorkingDays : 0;
+  const perMinuteSalary = standardWorkingMinutes > 0 ? perDaySalary / standardWorkingMinutes : 0;
+  const totalExpectedMinutes = assumedWorkingDays * standardWorkingMinutes;
 
   let totalWorkingMinutes = 0;
   let totalPermissionMinutes = 0;
-  let totalSalaryDeduction = 0;
   let dailyBreakdown = [];
   let punctualityViolations = 0;
 
-  if (isSingleDay) {
-    // Single day calculation - find the earliest and latest punch times
-    const dayPunches = filteredData.map(record => ({
-      time: parseAttendanceTime(record.time),
-      originalTime: record.time,
-      record
-    })).sort((a, b) => a.time - b.time);
-
-    if (dayPunches.length === 0) {
-      return {
-        totalDays: 0,
-        workingDays: 0,
-        totalWorkingHours: 0,
-        averageWorkingHours: 0,
-        totalPermissionTime: 0,
-        totalSalaryDeduction: 0,
-        productivityPercentage: 0,
-        dailyBreakdown: [],
-        summary: {
-          punctualityScore: 0,
-          attendanceRate: 0,
-          finalSalary: originalSalary,
-          originalSalary,
-          worker: {
-            name: worker.name || '',
-            username: worker.username || '',
-            rfid: worker.rfid || '',
-            department: worker.department || '',
-            email: worker.email || '',
-            perDaySalary: worker.perDaySalary || 0
-          }
-        },
-        configuration: {
-          considerOvertime,
-          deductSalary,
-          workStartTime,
-          workEndTime,
-          lunchStartTime: lunchFrom,
-          lunchEndTime: lunchTo,
-          permissionTimeMinutes,
-          salaryDeductionPerBreak
-        }
-      };
-    }
-
-    const firstPunch = dayPunches[0];
-    const lastPunch = dayPunches[dayPunches.length - 1];
-    
+  const processDay = (punches, date) => {
     const dayData = {
-      date: firstPunch.record.date,
-      punchTime: `${firstPunch.originalTime} - ${lastPunch.originalTime}`,
+      date,
+      punchTime: punches.length === 1 ? punches[0].originalTime : `${punches[0].originalTime} - ${punches[punches.length - 1].originalTime}`,
       workingMinutes: 0,
       permissionMinutes: 0,
       salaryDeduction: 0,
       issues: []
     };
 
-    let effectiveWorkStart = Math.max(firstPunch.time, workStart);
-    let effectiveWorkEnd = Math.min(lastPunch.time, workEnd);
-    let permissionTime = 0;
-    let daySalaryDeduction = 0;
+    const firstPunch = punches[0];
+    const lastPunch = punches[punches.length - 1];
 
-    // Handle late arrival
+    let effectiveWorkStart = Math.max(firstPunch.time, workStart);
+    let effectiveWorkEnd = punches.length > 1 ? Math.min(lastPunch.time, workEnd) : workEnd;
+    let permissionTime = 0;
+
     if (firstPunch.time > workStart) {
       const lateMinutes = firstPunch.time - workStart;
       if (lateMinutes <= permissionTimeMinutes) {
@@ -218,169 +129,84 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       } else {
         permissionTime += permissionTimeMinutes;
         const excessLateMinutes = lateMinutes - permissionTimeMinutes;
-        if (deductSalary && perDaySalary > 0) {
-          daySalaryDeduction += Math.ceil(excessLateMinutes / permissionTimeMinutes) * salaryDeductionPerBreak;
-          dayData.issues.push(`Excessive late arrival: ${Math.round(excessLateMinutes)} minutes beyond permission`);
-        }
         punctualityViolations++;
+        dayData.issues.push(`Excessive late arrival: ${Math.round(excessLateMinutes)} minutes`);
       }
     }
 
-    // Handle early departure
-    if (lastPunch.time < workEnd) {
+    if (lastPunch.time < workEnd && punches.length > 1) {
       const earlyMinutes = workEnd - lastPunch.time;
       if (earlyMinutes > permissionTimeMinutes) {
         const excessEarlyMinutes = earlyMinutes - permissionTimeMinutes;
-        if (deductSalary && perDaySalary > 0) {
-          daySalaryDeduction += Math.ceil(excessEarlyMinutes / permissionTimeMinutes) * salaryDeductionPerBreak;
-          dayData.issues.push(`Early departure: ${Math.round(excessEarlyMinutes)} minutes beyond permission`);
-        }
+        dayData.issues.push(`Early departure: ${Math.round(excessEarlyMinutes)} minutes`);
       }
     }
 
-    // Calculate working minutes
-    let dayWorkingMinutes = 0;
-    if (effectiveWorkEnd > effectiveWorkStart) {
-      dayWorkingMinutes = effectiveWorkEnd - effectiveWorkStart;
+    let dayWorkingMinutes = effectiveWorkEnd > effectiveWorkStart ? effectiveWorkEnd - effectiveWorkStart : 0;
 
-      // Subtract lunch time if it falls within working hours
-      if (effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
-        const lunchOverlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
-        dayWorkingMinutes -= Math.max(0, lunchOverlap);
-      }
-
-      // Subtract interval times if they fall within working hours
-      intervals.forEach(interval => {
-        const intervalStart = timeToMinutes(interval.from);
-        const intervalEnd = timeToMinutes(interval.to);
-        if (effectiveWorkStart < intervalEnd && effectiveWorkEnd > intervalStart) {
-          const intervalOverlap = Math.min(effectiveWorkEnd, intervalEnd) - Math.max(effectiveWorkStart, intervalStart);
-          dayWorkingMinutes -= Math.max(0, intervalOverlap);
-        }
-      });
+    if (effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
+      const overlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
+      dayWorkingMinutes -= Math.max(0, overlap);
     }
+
+    intervals.forEach(interval => {
+      const start = timeToMinutes(interval.from);
+      const end = timeToMinutes(interval.to);
+      if (effectiveWorkStart < end && effectiveWorkEnd > start) {
+        const overlap = Math.min(effectiveWorkEnd, end) - Math.max(effectiveWorkStart, start);
+        dayWorkingMinutes -= Math.max(0, overlap);
+      }
+    });
 
     dayData.workingMinutes = Math.max(0, dayWorkingMinutes);
     dayData.permissionMinutes = permissionTime;
-    dayData.salaryDeduction = daySalaryDeduction;
 
-    totalWorkingMinutes = dayData.workingMinutes;
-    totalPermissionMinutes = permissionTime;
-    totalSalaryDeduction = daySalaryDeduction;
+    totalWorkingMinutes += dayData.workingMinutes;
+    totalPermissionMinutes += permissionTime;
     dailyBreakdown.push(dayData);
+  };
 
+  if (isSingleDay) {
+    const punches = filteredData.map(record => ({
+      time: parseAttendanceTime(record.time),
+      originalTime: record.time,
+      record
+    })).sort((a, b) => a.time - b.time);
+
+    if (punches.length > 0) {
+      processDay(punches, punches[0].record.date);
+    }
   } else {
-    // Multiple days calculation - group by date
     const groupedByDate = {};
     filteredData.forEach(record => {
       const dateKey = new Date(record.date).toDateString();
-      if (!groupedByDate[dateKey]) {
-        groupedByDate[dateKey] = [];
-      }
+      if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
       groupedByDate[dateKey].push(record);
     });
 
     Object.keys(groupedByDate).forEach(dateKey => {
-      const dayRecords = groupedByDate[dateKey];
-      const dayPunches = dayRecords.map(record => ({
+      const punches = groupedByDate[dateKey].map(record => ({
         time: parseAttendanceTime(record.time),
         originalTime: record.time,
         record
       })).sort((a, b) => a.time - b.time);
-
-      if (dayPunches.length === 0) return;
-
-      const firstPunch = dayPunches[0];
-      const lastPunch = dayPunches[dayPunches.length - 1];
-      
-      const dayData = {
-        date: firstPunch.record.date,
-        punchTime: dayPunches.length === 1 ? firstPunch.originalTime : `${firstPunch.originalTime} - ${lastPunch.originalTime}`,
-        workingMinutes: 0,
-        permissionMinutes: 0,
-        salaryDeduction: 0,
-        issues: []
-      };
-
-      let effectiveWorkStart = Math.max(firstPunch.time, workStart);
-      let effectiveWorkEnd = dayPunches.length > 1 ? Math.min(lastPunch.time, workEnd) : workEnd;
-      let permissionTime = 0;
-      let daySalaryDeduction = 0;
-
-      // Handle late arrival
-      if (firstPunch.time > workStart) {
-        const lateMinutes = firstPunch.time - workStart;
-        if (lateMinutes <= permissionTimeMinutes) {
-          permissionTime += lateMinutes;
-          dayData.issues.push(`Late arrival: ${Math.round(lateMinutes)} minutes (within permission)`);
-        } else {
-          permissionTime += permissionTimeMinutes;
-          const excessLateMinutes = lateMinutes - permissionTimeMinutes;
-          if (deductSalary && perDaySalary > 0) {
-            daySalaryDeduction += Math.ceil(excessLateMinutes / permissionTimeMinutes) * salaryDeductionPerBreak;
-            dayData.issues.push(`Excessive late arrival: ${Math.round(excessLateMinutes)} minutes beyond permission`);
-          }
-          punctualityViolations++;
-        }
-      }
-
-      // Calculate working minutes
-      let dayWorkingMinutes = 0;
-      if (effectiveWorkEnd > effectiveWorkStart) {
-        if (dayPunches.length === 1) {
-          // Single punch - assume worked till end time
-          dayWorkingMinutes = effectiveWorkEnd - effectiveWorkStart;
-        } else {
-          // Multiple punches - use actual time difference
-          dayWorkingMinutes = effectiveWorkEnd - effectiveWorkStart;
-        }
-
-        // Subtract lunch time if it falls within working hours
-        if (effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
-          const lunchOverlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
-          dayWorkingMinutes -= Math.max(0, lunchOverlap);
-        }
-
-        // Subtract interval times if they fall within working hours
-        intervals.forEach(interval => {
-          const intervalStart = timeToMinutes(interval.from);
-          const intervalEnd = timeToMinutes(interval.to);
-          if (effectiveWorkStart < intervalEnd && effectiveWorkEnd > intervalStart) {
-            const intervalOverlap = Math.min(effectiveWorkEnd, intervalEnd) - Math.max(effectiveWorkStart, intervalStart);
-            dayWorkingMinutes -= Math.max(0, intervalOverlap);
-          }
-        });
-      }
-
-      dayData.workingMinutes = Math.max(0, dayWorkingMinutes);
-      dayData.permissionMinutes = permissionTime;
-      dayData.salaryDeduction = daySalaryDeduction;
-
-      totalWorkingMinutes += dayData.workingMinutes;
-      totalPermissionMinutes += permissionTime;
-      totalSalaryDeduction += daySalaryDeduction;
-      dailyBreakdown.push(dayData);
+      if (punches.length > 0) processDay(punches, punches[0].record.date);
     });
   }
 
-  // Calculate productivity metrics
-  const totalDays = isSingleDay ? 1 : Object.keys(dailyBreakdown.reduce((acc, day) => {
-    const dateKey = new Date(day.date).toDateString();
-    acc[dateKey] = true;
-    return acc;
-  }, {})).length;
-
-  const expectedTotalMinutes = totalDays * standardWorkingMinutes;
-  const productivityPercentage = expectedTotalMinutes > 0 ? (totalWorkingMinutes / expectedTotalMinutes) * 100 : 0;
+  const totalDays = dailyBreakdown.length;
+  const productivityPercentage = totalExpectedMinutes > 0 ? (totalWorkingMinutes / totalExpectedMinutes) * 100 : 0;
   const averageWorkingHours = totalDays > 0 ? (totalWorkingMinutes / totalDays) / 60 : 0;
   const punctualityScore = totalDays > 0 ? ((totalDays - punctualityViolations) / totalDays) * 100 : 0;
-  const attendanceRate = 100; // Since we're only looking at days they were present
+  const attendanceRate = 100;
 
-  // Calculate final salary after deductions
-  let finalSalary = originalSalary;
-  if (deductSalary) {
-    finalSalary = Math.max(0, originalSalary - totalSalaryDeduction);
-  }
+  const finalSalary = totalExpectedMinutes > 0
+    ? (originalSalary * totalWorkingMinutes) / totalExpectedMinutes
+    : 0;
+
+  const totalSalaryDeduction = originalSalary - finalSalary;
+
+  const originalSalaryForPeriod = originalSalary;
 
   return {
     totalDays,
@@ -389,26 +215,33 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     averageWorkingHours,
     totalPermissionTime: totalPermissionMinutes,
     totalSalaryDeduction,
-    productivityPercentage: Math.round(productivityPercentage * 100) / 100,
+    productivityPercentage,
     dailyBreakdown: dailyBreakdown.map(day => ({
       ...day,
       workingHours: day.workingMinutes / 60,
       permissionTime: day.permissionMinutes,
       workingTimeDisplay: minutesToTime(day.workingMinutes),
-      permissionTimeDisplay: minutesToTime(day.permissionMinutes)
+      permissionTimeDisplay: minutesToTime(day.permissionMinutes),
+      daySalaryFromMinutes: day.workingMinutes * perMinuteSalary,
+      expectedDaySalary: perDaySalary
     })),
     summary: {
-      punctualityScore: Math.round(punctualityScore * 100) / 100,
-      attendanceRate: Math.round(attendanceRate * 100) / 100,
+      punctualityScore,
+      attendanceRate,
       finalSalary,
       originalSalary,
+      originalSalaryForPeriod,
+      salaryFromWorkingMinutes: finalSalary,
+      perMinuteSalary,
+      perDaySalary,
+      workingDaysInMonth: assumedWorkingDays,
       worker: {
         name: worker.name || '',
         username: worker.username || '',
         rfid: worker.rfid || '',
         department: worker.department || '',
         email: worker.email || '',
-        perDaySalary: worker.perDaySalary || 0
+        salary: worker.salary || 0
       }
     },
     configuration: {
@@ -419,7 +252,37 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       lunchStartTime: lunchFrom,
       lunchEndTime: lunchTo,
       permissionTimeMinutes,
-      salaryDeductionPerBreak
+      salaryDeductionPerBreak,
+      standardWorkingMinutesPerDay: standardWorkingMinutes
     }
   };
 };
+
+function emptyResponse() {
+  return {
+    totalDays: 0,
+    workingDays: 0,
+    totalWorkingHours: 0,
+    averageWorkingHours: 0,
+    totalPermissionTime: 0,
+    totalSalaryDeduction: 0,
+    productivityPercentage: 0,
+    dailyBreakdown: [],
+    summary: {
+      punctualityScore: 0,
+      attendanceRate: 0,
+      finalSalary: 0,
+      originalSalary: 0,
+      perMinuteSalary: 0,
+      worker: {
+        name: '',
+        username: '',
+        rfid: '',
+        department: '',
+        email: '',
+        perDaySalary: 0
+      }
+    },
+    configuration: {}
+  };
+}

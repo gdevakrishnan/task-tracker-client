@@ -48,51 +48,52 @@ const ProductivityDisplay = ({ productivityData }) => {
       />
 
       {/* Productivity Percentage */}
-      <ProductivityCard
+      {/* <ProductivityCard
         title="Productivity"
-        value={`${productivityData.productivityPercentage}%`}
+        value={`${productivityData.productivityPercentage.toFixed(3)}%`}
         icon={FaChartLine}
         bgColor="bg-green-50"
         textColor="text-green-600"
         subtitle="Overall efficiency"
-      />
+      /> */}
 
       {/* Punctuality Score */}
-      <ProductivityCard
+      {/* <ProductivityCard
         title="Punctuality"
-        value={`${productivityData.summary.punctualityScore}%`}
+        value={`${productivityData.summary.punctualityScore.toFixed(3)}%`}
         icon={FaUserCheck}
         bgColor="bg-purple-50"
         textColor="text-purple-600"
         subtitle="On-time performance"
-      />
+      /> */}
 
       {/* Attendance Rate */}
-      <ProductivityCard
+      {/* <ProductivityCard
         title="Attendance"
-        value={`${productivityData.summary.attendanceRate}%`}
+        value={`${productivityData.summary.attendanceRate.toFixed(3)}%`}
         icon={FaCalendarCheck}
         bgColor="bg-indigo-50"
         textColor="text-indigo-600"
         subtitle={`${productivityData.workingDays}/${productivityData.totalDays} days`}
-      />
+      /> */}
 
       {/* Salary Status */}
       <ProductivityCard
         title="Final Salary"
-        value={`₹${productivityData.summary.finalSalary.toLocaleString()}`}
+        value={`₹${productivityData.summary.finalSalary.toFixed(3).toLocaleString()}`}
         icon={FaMoneyBillWave}
         bgColor={productivityData.totalSalaryDeduction > 0 ? "bg-red-50" : "bg-green-50"}
         textColor={productivityData.totalSalaryDeduction > 0 ? "text-red-600" : "text-green-600"}
-        subtitle={
-          productivityData.totalSalaryDeduction > 0 
-            ? `Deduction: ₹${productivityData.totalSalaryDeduction}`
-            : "No deductions"
-        }
+        // subtitle={
+        //   productivityData.totalSalaryDeduction > 0 
+        //     ? `Deduction: ₹${productivityData.totalSalaryDeduction.toFixed(3)}`
+        //     : "No deductions"
+        // }
+        subtitle={'Final salary of selected dates'}
       />
 
       {/* Performance Rating */}
-      <ProductivityCard
+      {/* <ProductivityCard
         title="Performance"
         value={
           productivityData.productivityPercentage >= 95 ? "Excellent" :
@@ -110,8 +111,8 @@ const ProductivityDisplay = ({ productivityData }) => {
           productivityData.productivityPercentage >= 85 ? "text-blue-600" :
           productivityData.productivityPercentage >= 75 ? "text-yellow-600" : "text-red-600"
         }
-        subtitle={`${productivityData.productivityPercentage}% efficiency`}
-      />
+        subtitle={`${productivityData.productivityPercentage.toFixed(3)}% efficiency`}
+      /> */}
 
       {/* Issue Alert (if any) */}
       {(productivityData.totalSalaryDeduction > 0 || productivityData.totalPermissionTime > 60) && (
@@ -119,13 +120,13 @@ const ProductivityDisplay = ({ productivityData }) => {
           title="Alerts"
           value={
             productivityData.totalSalaryDeduction > 0 
-              ? `₹${productivityData.totalSalaryDeduction} Deducted`
+              ? `₹${productivityData.totalSalaryDeduction.toFixed(3)}`
               : "Permission Time High"
           }
           icon={FaExclamationTriangle}
           bgColor="bg-orange-50"
           textColor="text-orange-600"
-          subtitle="Requires attention"
+          subtitle="Date-Specific Salary Adjustment (Deducted/Remaining)"
         />
       )}
     </div>
