@@ -135,7 +135,7 @@ const WorkerAttendance = () => {
             doc.setTextColor(37, 99, 235);
             doc.setFontSize(20);
             doc.setFont('helvetica', 'bold');
-            doc.text('Worker Productivity Report', 20, 20);
+            doc.text('Employee Productivity Report', 20, 20);
 
             // Worker Information
             let currentY = 40;
