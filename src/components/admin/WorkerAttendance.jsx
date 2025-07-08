@@ -145,7 +145,7 @@ const WorkerAttendance = () => {
             if (reportData.summary?.worker) {
                 const worker = reportData.summary.worker;
                 doc.text(`Employee: ${worker.name || 'N/A'}`, 20, currentY);
-                doc.text(`Department: ${worker.department || 'N/A'}`, 20, currentY + 8);
+                doc.text(`Employee ID: ${worker.rfid || 'N/A'}`, 20, currentY + 8);
                 doc.text(`Email: ${worker.email || 'N/A'}`, 20, currentY + 16);
                 currentY += 30;
             }
