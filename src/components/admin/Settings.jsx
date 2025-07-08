@@ -43,8 +43,8 @@ const Settings = () => {
         breakfastCloseTime: '09:00',
         breakfastAutoSwitch: false,
 
-        // Lunch settings (existing)
-        foodRequestEnabled: true,
+        // Lunch (food request) settings
+        foodRequestEnabled: false,
         foodRequestOpenTime: '12:00',
         foodRequestCloseTime: '14:00',
         foodRequestAutoSwitch: false,
@@ -64,38 +64,39 @@ const Settings = () => {
         permissionTimeMinutes: 15,
         salaryDeductionPerBreak: 10,
 
-        // Batches and lunch
+        // Batches and intervals
         batches: [
             {
                 batchName: 'Full Time',
                 from: '09:00',
-                to: '19:00'
+                to: '19:00',
+                lunchFrom: '12:00',
+                lunchTo: '13:00',
+                isLunchConsider: false
             }
         ],
-        lunchFrom: '12:00',
-        lunchTo: '13:00',
         intervals: [
             {
                 intervalName: 'interval1',
                 from: '10:15',
-                to: '10:30'
+                to: '10:30',
+                isBreakConsider: false
             },
             {
                 intervalName: 'interval2',
                 from: '14:15',
-                to: '14:30'
+                to: '14:30',
+                isBreakConsider: false
             }
         ]
     });
 
     const formatTimeTo12Hour = (time24) => {
         if (!time24) return '';
-
         const [hours, minutes] = time24.split(':');
         const hour = parseInt(hours, 10);
         const period = hour >= 12 ? 'PM' : 'AM';
         const hour12 = hour % 12 || 12;
-
         return `${hour12}:${minutes.padStart(2, '0')} ${period}`;
     };
 
@@ -136,8 +137,6 @@ const Settings = () => {
                 }
             });
             const fetchedSettings = response.data;
-            console.log(fetchedSettings);
-
             // Update state with fetched settings
             setSettings((prevSettings) => ({
                 ...prevSettings,
@@ -146,12 +145,6 @@ const Settings = () => {
                 breakfastOpenTime: fetchedSettings.breakfast.openTime,
                 breakfastCloseTime: fetchedSettings.breakfast.closeTime,
                 breakfastAutoSwitch: fetchedSettings.breakfast.autoSwitch,
-
-                // Lunch settings
-                foodRequestEnabled: fetchedSettings.lunch.enabled,
-                foodRequestOpenTime: fetchedSettings.lunch.openTime,
-                foodRequestCloseTime: fetchedSettings.lunch.closeTime,
-                foodRequestAutoSwitch: fetchedSettings.lunch.autoSwitch,
 
                 // Dinner settings
                 dinnerEnabled: fetchedSettings.dinner.enabled,
@@ -168,22 +161,39 @@ const Settings = () => {
                 permissionTimeMinutes: fetchedSettings.permissionTimeMinutes,
                 salaryDeductionPerBreak: fetchedSettings.salaryDeductionPerBreak,
 
-                // Batches and lunch settings
-                batches: fetchedSettings.batches || [{ batchName: 'Full Time', from: '09:00', to: '19:00' }],
-                lunchFrom: fetchedSettings.lunchFrom || '12:00',
-                lunchTo: fetchedSettings.lunchTo || '13:00',
+                // Batches and intervals
+                batches: fetchedSettings.batches || [{
+                    batchName: 'Full Time',
+                    from: '09:00',
+                    to: '19:00',
+                    lunchFrom: '12:00',
+                    lunchTo: '13:00',
+                    isLunchConsider: false
+                }],
                 intervals: fetchedSettings.intervals || [
-                    { intervalName: 'interval1', from: '10:15', to: '10:30' },
-                    { intervalName: 'interval2', from: '14:15', to: '14:30' }
+                    { intervalName: 'interval1', from: '10:15', to: '10:30', isBreakConsider: false },
+                    { intervalName: 'interval2', from: '14:15', to: '14:30', isBreakConsider: false }
                 ]
             }));
 
-            setOriginalSettings(fetchedSettings);
+            setOriginalSettings({
+                ...fetchedSettings,
+                batches: fetchedSettings.batches || [{
+                    batchName: 'Full Time',
+                    from: '09:00',
+                    to: '19:00',
+                    lunchFrom: '12:00',
+                    lunchTo: '13:00',
+                    isLunchConsider: false
+                }],
+                intervals: fetchedSettings.intervals || [
+                    { intervalName: 'interval1', from: '10:15', to: '10:30', isBreakConsider: false },
+                    { intervalName: 'interval2', from: '14:15', to: '14:30', isBreakConsider: false }
+                ]
+            });
             setHasChanges(false);
         } catch (error) {
-            console.error('Error fetching settings!', error);
             if (error.response?.status === 404) {
-                // Settings not found, use defaults
                 setOriginalSettings(settings);
             } else {
                 toast.error('Failed to fetch settings');
@@ -193,7 +203,7 @@ const Settings = () => {
         }
     };
 
-    // Handle input changes
+    // Handle input changes (for non-batch/interval fields)
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
         const newValue = type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value);
@@ -207,39 +217,115 @@ const Settings = () => {
         checkForChanges(updatedSettings);
     };
 
+    // Handle batch changes
+    const handleBatchChange = (index, field, value) => {
+        const updatedBatches = [...settings.batches];
+        updatedBatches[index] = {
+            ...updatedBatches[index],
+            [field]: value
+        };
+        const updatedSettings = {
+            ...settings,
+            batches: updatedBatches
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    // Handle interval changes
+    const handleIntervalChange = (index, field, value) => {
+        const updatedIntervals = [...settings.intervals];
+        updatedIntervals[index] = {
+            ...updatedIntervals[index],
+            [field]: value
+        };
+        const updatedSettings = {
+            ...settings,
+            intervals: updatedIntervals
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    // Handle adding new batch
+    const handleAddBatch = () => {
+        const newBatch = {
+            batchName: '',
+            from: '09:00',
+            to: '19:00',
+            lunchFrom: '12:00',
+            lunchTo: '13:00',
+            isLunchConsider: false
+        };
+        const updatedSettings = {
+            ...settings,
+            batches: [...settings.batches, newBatch]
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    // Handle removing batch
+    const handleRemoveBatch = (index) => {
+        const updatedBatches = settings.batches.filter((_, i) => i !== index);
+        const updatedSettings = {
+            ...settings,
+            batches: updatedBatches
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    // Handle adding new interval
+    const handleAddInterval = () => {
+        const newInterval = {
+            intervalName: `interval${settings.intervals.length + 1}`,
+            from: '10:15',
+            to: '10:30',
+            isBreakConsider: false
+        };
+        const updatedSettings = {
+            ...settings,
+            intervals: [...settings.intervals, newInterval]
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
+    // Handle removing interval
+    const handleRemoveInterval = (index) => {
+        const updatedIntervals = settings.intervals.filter((_, i) => i !== index);
+        const updatedSettings = {
+            ...settings,
+            intervals: updatedIntervals
+        };
+        setSettings(updatedSettings);
+        checkForChanges(updatedSettings);
+    };
+
     // Handle settings save
     const handleSaveSettings = async () => {
-        // Validate batch names
         if (!validateBatchNames(settings.batches)) {
             toast.error('Batch names must be unique. Please check for duplicate batch names.');
             return;
         }
-
-        // Validate interval names
         if (!validateIntervalNames(settings.intervals)) {
             toast.error('Interval names must be unique. Please check for duplicate interval names.');
             return;
         }
-
         setSaving(true);
-
         try {
-            console.log('Saving settings:', settings);
             const token = getAuthToken();
-            const response = await api.put(`/settings/${subdomain}`, settings, {
+            await api.put(`/settings/${subdomain}`, settings, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
             });
-
             setOriginalSettings(settings);
             setHasChanges(false);
-
             toast.success('Settings updated successfully');
-            console.log('Settings saved successfully:', response.data);
         } catch (error) {
-            console.error('Error saving settings:', error);
             toast.error('Failed to save settings');
         } finally {
             setSaving(false);
@@ -274,6 +360,7 @@ const Settings = () => {
         } else {
             setLoading(false);
         }
+        // eslint-disable-next-line
     }, [subdomain]);
 
     if (loading) {
@@ -300,7 +387,7 @@ const Settings = () => {
             title: 'Lunch',
             icon: FiSun,
             color: 'blue',
-            enabledKey: 'foodRequestEnabled',
+            enabledKey: 'foodRequestEnabled', // keep for meal service config only
             openTimeKey: 'foodRequestOpenTime',
             closeTimeKey: 'foodRequestCloseTime',
             autoSwitchKey: 'foodRequestAutoSwitch'
@@ -316,80 +403,6 @@ const Settings = () => {
             autoSwitchKey: 'dinnerAutoSwitch'
         }
     ];
-
-    const addBatch = () => {
-        const newBatch = {
-            batchName: `Batch ${settings.batches.length + 1}`,
-            from: '09:00',
-            to: '18:00'
-        };
-        const updatedSettings = {
-            ...settings,
-            batches: [...settings.batches, newBatch]
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
-    const deleteBatch = (index) => {
-        const updatedSettings = {
-            ...settings,
-            batches: settings.batches.filter((_, i) => i !== index)
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
-    const addInterval = () => {
-        const newInterval = {
-            intervalName: `interval${settings.intervals.length + 1}`,
-            from: '10:00',
-            to: '10:15'
-        };
-        const updatedSettings = {
-            ...settings,
-            intervals: [...settings.intervals, newInterval]
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
-    const deleteInterval = (index) => {
-        const updatedSettings = {
-            ...settings,
-            intervals: settings.intervals.filter((_, i) => i !== index)
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
-    const updateBatch = (index, field, value) => {
-        const updatedBatches = [...settings.batches];
-        updatedBatches[index] = {
-            ...updatedBatches[index],
-            [field]: value
-        };
-        const updatedSettings = {
-            ...settings,
-            batches: updatedBatches
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
-
-    const updateInterval = (index, field, value) => {
-        const updatedIntervals = [...settings.intervals];
-        updatedIntervals[index] = {
-            ...updatedIntervals[index],
-            [field]: value
-        };
-        const updatedSettings = {
-            ...settings,
-            intervals: updatedIntervals
-        };
-        setSettings(updatedSettings);
-        checkForChanges(updatedSettings);
-    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -724,60 +737,95 @@ const Settings = () => {
                                         </div>
                                         Work Batches
                                     </h3>
-                                    <Button
-                                        onClick={addBatch}
-                                        variant="secondary"
-                                        size="sm"
-                                        className="flex items-center text-xs"
-                                    >
-                                        <FiPlus className="mr-1 h-3 w-3" />
-                                        Add Batch
-                                    </Button>
                                 </div>
-
-                                <div className="space-y-4 max-h-60 overflow-y-auto">
-                                    {settings.batches.map((batch, index) => (
-                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                            <div className="flex items-center justify-between mb-3">
+                                {/* Batches List */}
+                                {settings.batches && settings.batches.map((batch, index) => (
+                                    <div key={index} className="batch-item border p-4 mb-4 rounded">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-semibold">Batch {index + 1}</h4>
+                                            <button
+                                                onClick={() => handleRemoveBatch(index)}
+                                                className="text-red-500 hover:text-red-700"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                        {/* Batch Name */}
+                                        <div className="mb-3">
+                                            <label className="block text-sm font-medium mb-1">Batch Name</label>
+                                            <input
+                                                type="text"
+                                                value={batch.batchName}
+                                                onChange={(e) => handleBatchChange(index, 'batchName', e.target.value)}
+                                                className="w-full p-2 border rounded"
+                                                placeholder="Enter batch name"
+                                            />
+                                        </div>
+                                        {/* Working Hours */}
+                                        <div className="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">From</label>
                                                 <input
-                                                    type="text"
-                                                    value={batch.batchName}
-                                                    onChange={(e) => updateBatch(index, 'batchName', e.target.value)}
-                                                    className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm font-medium"
-                                                    placeholder="Batch Name"
+                                                    type="time"
+                                                    value={batch.from}
+                                                    onChange={(e) => handleBatchChange(index, 'from', e.target.value)}
+                                                    className="w-full p-2 border rounded"
                                                 />
-                                                <Button
-                                                    onClick={() => deleteBatch(index)}
-                                                    variant="danger"
-                                                    size="sm"
-                                                    className="ml-2 p-1"
-                                                >
-                                                    <FiTrash2 className="h-3 w-3" />
-                                                </Button>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
-                                                    <input
-                                                        type="time"
-                                                        value={batch.from}
-                                                        onChange={(e) => updateBatch(index, 'from', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
-                                                    <input
-                                                        type="time"
-                                                        value={batch.to}
-                                                        onChange={(e) => updateBatch(index, 'to', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
-                                                    />
-                                                </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">To</label>
+                                                <input
+                                                    type="time"
+                                                    value={batch.to}
+                                                    onChange={(e) => handleBatchChange(index, 'to', e.target.value)}
+                                                    className="w-full p-2 border rounded"
+                                                />
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        {/* Lunch Hours */}
+                                        <div className="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Lunch From</label>
+                                                <input
+                                                    type="time"
+                                                    value={batch.lunchFrom}
+                                                    onChange={(e) => handleBatchChange(index, 'lunchFrom', e.target.value)}
+                                                    className="w-full p-2 border rounded"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Lunch To</label>
+                                                <input
+                                                    type="time"
+                                                    value={batch.lunchTo}
+                                                    onChange={(e) => handleBatchChange(index, 'lunchTo', e.target.value)}
+                                                    className="w-full p-2 border rounded"
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* Consider Work at Lunch Toggle */}
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <label className="block text-sm font-medium">Consider Work at Lunch</label>
+                                                <p className="text-xs text-gray-500">Allow employees to work during lunch hours</p>
+                                            </div>
+                                            <label className="switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={batch.isLunchConsider}
+                                                    onChange={(e) => handleBatchChange(index, 'isLunchConsider', e.target.checked)}
+                                                />
+                                                <span className="slider round"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={handleAddBatch}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                >
+                                    Add New Batch
+                                </button>
                             </div>
                         </Card>
 
@@ -792,105 +840,77 @@ const Settings = () => {
                                         </div>
                                         Break Intervals
                                     </h3>
-                                    <Button
-                                        onClick={addInterval}
-                                        variant="secondary"
-                                        size="sm"
-                                        className="flex items-center text-xs"
-                                    >
-                                        <FiPlus className="mr-1 h-3 w-3" />
-                                        Add Interval
-                                    </Button>
                                 </div>
-
-                                <div className="space-y-4 max-h-60 overflow-y-auto">
-                                    {settings.intervals.map((interval, index) => (
-                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                            <div className="flex items-center justify-between mb-3">
+                                {/* Intervals List */}
+                                {settings.intervals && settings.intervals.map((interval, index) => (
+                                    <div key={index} className="interval-item border p-4 mb-4 rounded">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-semibold">Interval {index + 1}</h4>
+                                            <button
+                                                onClick={() => handleRemoveInterval(index)}
+                                                className="text-red-500 hover:text-red-700"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                        {/* Interval Name */}
+                                        <div className="mb-3">
+                                            <label className="block text-sm font-medium mb-1">Interval Name</label>
+                                            <input
+                                                type="text"
+                                                value={interval.intervalName}
+                                                onChange={(e) => handleIntervalChange(index, 'intervalName', e.target.value)}
+                                                className="w-full p-2 border rounded"
+                                                placeholder="Enter interval name"
+                                            />
+                                        </div>
+                                        {/* Interval Times */}
+                                        <div className="grid grid-cols-2 gap-4 mb-3">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">From</label>
                                                 <input
-                                                    type="text"
-                                                    value={interval.intervalName}
-                                                    onChange={(e) => updateInterval(index, 'intervalName', e.target.value)}
-                                                    className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm font-medium"
-                                                    placeholder="Interval Name"
+                                                    type="time"
+                                                    value={interval.from}
+                                                    onChange={(e) => handleIntervalChange(index, 'from', e.target.value)}
+                                                    className="w-full p-2 border rounded"
                                                 />
-                                                <Button
-                                                    onClick={() => deleteInterval(index)}
-                                                    variant="danger"
-                                                    size="sm"
-                                                    className="ml-2 p-1"
-                                                >
-                                                    <FiTrash2 className="h-3 w-3" />
-                                                </Button>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
-                                                    <input
-                                                        type="time"
-                                                        value={interval.from}
-                                                        onChange={(e) => updateInterval(index, 'from', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
-                                                    <input
-                                                        type="time"
-                                                        value={interval.to}
-                                                        onChange={(e) => updateInterval(index, 'to', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
-                                                    />
-                                                </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">To</label>
+                                                <input
+                                                    type="time"
+                                                    value={interval.to}
+                                                    onChange={(e) => handleIntervalChange(index, 'to', e.target.value)}
+                                                    className="w-full p-2 border rounded"
+                                                />
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        {/* Consider Work at Breaks Toggle */}
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <label className="block text-sm font-medium">Consider Work at Breaks</label>
+                                                <p className="text-xs text-gray-500">Allow employees to work during break time</p>
+                                            </div>
+                                            <label className="switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={interval.isBreakConsider}
+                                                    onChange={(e) => handleIntervalChange(index, 'isBreakConsider', e.target.checked)}
+                                                />
+                                                <span className="slider round"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={handleAddInterval}
+                                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                                >
+                                    Add New Interval
+                                </button>
                             </div>
                         </Card>
                     </div>
-
-                    {/* Lunch Time Configuration */}
-                    <Card className="mt-6 hover:shadow-lg transition-shadow duration-200">
-                        <div className="h-2 bg-gradient-to-r from-orange-400 to-red-400" />
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold mb-6 flex items-center text-gray-900">
-                                <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                                    <FiSun className="h-5 w-5 text-orange-600" />
-                                </div>
-                                Lunch Time Configuration
-                            </h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch From</label>
-                                    <input
-                                        type="time"
-                                        name="lunchFrom"
-                                        value={settings.lunchFrom}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {formatTimeTo12Hour(settings.lunchFrom)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch To</label>
-                                    <input
-                                        type="time"
-                                        name="lunchTo"
-                                        value={settings.lunchTo}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {formatTimeTo12Hour(settings.lunchTo)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
                 </div>
 
                 {/* Settings Summary */}
