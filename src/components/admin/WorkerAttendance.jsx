@@ -12,6 +12,7 @@ import { calculateWorkerProductivity } from '../../utils/productivityCalculator'
 import ProductivityDisplay from './ProductivityDisplay';
 import api from '../../hooks/useAxios';
 import { getAuthToken } from '../../utils/authUtils';
+import jsPDF from 'jspdf';
 
 const WorkerAttendance = () => {
     const { id } = useParams();
@@ -24,6 +25,7 @@ const WorkerAttendance = () => {
     const [filteredByDateData, setFilteredByDateData] = useState([]);
     const [productivityData, setProductivityData] = useState(null);
     const [settingsData, setSettingsData] = useState(null);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const fetchSettings = async () => {
@@ -53,10 +55,9 @@ const WorkerAttendance = () => {
                 permissionTimeMinutes: fetchedSettings.permissionTimeMinutes,
                 salaryDeductionPerBreak: fetchedSettings.salaryDeductionPerBreak,
                 batches: fetchedSettings.batches,
-                lunchFrom: fetchedSettings.lunchFrom,
-                lunchTo: fetchedSettings.lunchTo,
                 intervals: fetchedSettings.intervals
             }));
+
             setFilteredBatch(fetchedSettings.batches[0].batchName);
         } catch (error) {
             console.error('Error fetching settings!', error);
@@ -68,6 +69,176 @@ const WorkerAttendance = () => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!settingsData?.batches || !fiteredBatch) return;
+
+        const selectedBatch = settingsData.batches.find(
+            (batch) => batch.batchName === fiteredBatch
+        );
+
+        if (!selectedBatch) return;
+
+        // Only update if values have changed
+        if (
+            settingsData.lunchFrom !== selectedBatch.lunchFrom ||
+            settingsData.lunchTo !== selectedBatch.lunchTo ||
+            settingsData.isLunchConsider !== selectedBatch.isLunchConsider
+        ) {
+            setSettingsData((prevSettings) => ({
+                ...prevSettings,
+                lunchFrom: selectedBatch.lunchFrom,
+                lunchTo: selectedBatch.lunchTo,
+                isLunchConsider: selectedBatch.isLunchConsider
+            }));
+        }
+    }, [fiteredBatch, settingsData?.batches]);
+
+    const downloadPDF = async (reportData) => {
+        setIsGenerating(true);
+
+        try {
+            const doc = new jsPDF();
+
+            // Helper function to clean currency values
+            const cleanCurrencyValue = (value) => {
+                if (typeof value === 'string') {
+                    // Remove ₹ symbol and ¹ character, then add Rs. prefix
+                    return value.replace(/₹/g, '').replace(/¹/g, '').replace(/Rs\./g, '').trim();
+                }
+                return value;
+            };
+
+            // Helper function to format currency
+            const formatCurrency = (value) => {
+                const cleanValue = cleanCurrencyValue(value);
+                if (cleanValue && !isNaN(parseFloat(cleanValue))) {
+                    return `Rs. ${cleanValue}`;
+                }
+                return cleanValue || 'Rs. 0';
+            };
+
+            // Set up colors and fonts
+            const primaryColor = [0, 0, 0];
+            const secondaryColor = [0, 0, 0];
+            const lightGray = [0, 0, 0];
+            const darkGray = [0, 0, 0];
+            const header = [234, 241, 250];
+
+            // Header
+            doc.setFillColor(...header);
+            doc.rect(0, 0, 210, 30, 'F');
+
+            doc.setTextColor(37, 99, 235);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Worker Productivity Report', 20, 20);
+
+            // Worker Information
+            let currentY = 40;
+            doc.setTextColor(...secondaryColor);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+
+            if (reportData.summary?.worker) {
+                const worker = reportData.summary.worker;
+                doc.text(`Employee: ${worker.name || 'N/A'}`, 20, currentY);
+                doc.text(`Department: ${worker.department || 'N/A'}`, 20, currentY + 8);
+                doc.text(`Email: ${worker.email || 'N/A'}`, 20, currentY + 16);
+                currentY += 30;
+            }
+
+            // Summary Section
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...primaryColor);
+            doc.text('Final Summary', 20, currentY);
+            doc.setFont('helvetica', 'normal');
+            currentY += 10;
+
+            // Create summary content with cleaned currency values
+            const summaryEntries = Object.entries(reportData.finalSummary);
+            doc.setFontSize(10);
+            doc.setTextColor(...secondaryColor);
+
+            summaryEntries.forEach(([key, value], index) => {
+                const yPos = currentY + (index * 8);
+
+                // Clean the value if it contains currency
+                let displayValue = value;
+                if (typeof value === 'string' && (value.includes('₹') || value.includes('¹') || value.includes('Rs.'))) {
+                    displayValue = formatCurrency(value);
+                }
+
+                doc.text(`${key}: ${displayValue}`, 20, yPos);
+            });
+
+            currentY += (summaryEntries.length * 8) + 20;
+
+            // Detailed Report Section
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...primaryColor);
+            doc.text('Detailed Daily Attendance Report', 20, currentY);
+            currentY += 15;
+
+            // Create table headers
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Date', 20, currentY);
+            doc.text('In Time', 50, currentY);
+            doc.text('Out Time', 80, currentY);
+            doc.text('Worked Hours', 110, currentY);
+            doc.text('Permission (mins)', 140, currentY);
+            doc.text('Deduction', 180, currentY);
+
+            currentY += 5;
+            doc.line(20, currentY, 200, currentY); // Header line
+            currentY += 5;
+
+            // Add table data with cleaned currency values
+            doc.setFont('helvetica', 'normal');
+            reportData.report.forEach((row, index) => {
+                if (currentY > 270) { // Check if we need a new page
+                    doc.addPage();
+                    currentY = 20;
+                }
+
+                // Clean the deduction value
+                const cleanDeduction = row.deduction ? formatCurrency(row.deduction) : 'Rs. 0';
+
+                doc.text(row.date || '', 20, currentY);
+                doc.text(row.inTime || '', 50, currentY);
+                doc.text(row.outTime || '', 80, currentY);
+                doc.text(row.workedHours || '', 110, currentY);
+                doc.text(row.permissionMins?.toString() || '0', 150, currentY);
+                doc.text(cleanDeduction, 180, currentY);
+
+                currentY += 8;
+            });
+
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(...darkGray);
+                doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 285);
+                doc.text(`Page ${i} of ${pageCount}`, 170, 285);
+            }
+
+            // Save the PDF
+            const fileName = `productivity_report_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
+
+            toast.success('PDF generated successfully!');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            toast.error('Error generating PDF. Please try again.');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -97,6 +268,7 @@ const WorkerAttendance = () => {
         }
     }, [subdomain]);
 
+    // Replace the productivity calculation section in your useEffect:
     useEffect(() => {
         let filtered = attendanceData;
 
@@ -107,15 +279,12 @@ const WorkerAttendance = () => {
 
                 const itemDate = item.date.split('T')[0];
 
-                // If both dates are provided
                 if (fromDate && toDate) {
                     return itemDate >= fromDate && itemDate <= toDate;
                 }
-                // If only from date is provided
                 else if (fromDate) {
                     return itemDate >= fromDate;
                 }
-                // If only to date is provided
                 else if (toDate) {
                     return itemDate <= toDate;
                 }
@@ -123,13 +292,11 @@ const WorkerAttendance = () => {
                 return true;
             });
         }
-        console.log(filtered);
 
         setFilteredByDateData(filtered);
 
         // Calculate productivity for the filtered date range
-        if (fromDate && toDate) {
-            console.log("productivity: ");
+        if (fromDate && toDate && settingsData) {
             const productivityParameters = {
                 attendanceData,
                 fromDate,
@@ -142,20 +309,18 @@ const WorkerAttendance = () => {
                     batches: settingsData.batches,
                     lunchFrom: settingsData.lunchFrom,
                     lunchTo: settingsData.lunchTo,
+                    isLunchConsider: settingsData.isLunchConsider,
                     intervals: settingsData.intervals,
                     fiteredBatch: fiteredBatch
                 }
             }
 
-            console.log(productivityParameters);
-
             const productivity = calculateWorkerProductivity(productivityParameters);
-
             setProductivityData(productivity);
         } else {
             setProductivityData(null);
         }
-    }, [fromDate, toDate, attendanceData]);
+    }, [fromDate, toDate, attendanceData, settingsData, fiteredBatch]);
 
     const handleReset = () => {
         setFilteredByDateData(attendanceData);
@@ -257,7 +422,7 @@ const WorkerAttendance = () => {
                     <select
                         value={fiteredBatch}
                         onChange={handleBatchChange}
-                        className="form-input w-40 bg-white text-gray-700" // Same class as input box
+                        className="form-input w-40 bg-white text-gray-700"
                     >
                         {settingsData?.batches?.map((batch) => (
                             <option key={batch.id} value={batch.id}>
@@ -287,6 +452,24 @@ const WorkerAttendance = () => {
                         onChange={handleToDateChange}
                     />
                 </div>
+
+                {/* Add download button here */}
+                {productivityData && (
+                    <Button
+                        variant="success"
+                        className="flex items-center"
+                        onClick={() => downloadPDF({
+                            finalSummary: productivityData.finalSummary,
+                            report: productivityData.report,
+                            summary: productivityData.summary
+                        })}
+                        disabled={isGenerating}
+                    >
+                        <FaMoneyBillWave className="mr-2" />
+                        {isGenerating ? 'Generating...' : 'Download PDF'}
+                    </Button>
+                )}
+
                 <Button
                     variant="primary"
                     className="flex items-center"

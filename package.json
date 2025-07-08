@@ -23,6 +23,8 @@
     "dayjs": "^1.11.13",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.6.2",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "jsqr": "^1.4.0",
     "motion": "^12.18.1",
     "nodemailer": "^7.0.3",

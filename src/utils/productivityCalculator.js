@@ -49,6 +49,25 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return totalMinutes;
   };
 
+  const formatTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+  };
+
+  const formatCurrency = (amount) => {
+    return `₹${amount.toFixed(2)}`;
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'long' });
+    return `${day.toString().padStart(2, '0')} ${month}`;
+  };
+
   const isDateInRange = (date, fromDate, toDate) => {
     const checkDate = new Date(date);
     const from = new Date(fromDate);
@@ -103,6 +122,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   let totalPermissionMinutes = 0;
   let dailyBreakdown = [];
   let punctualityViolations = 0;
+  let report = [];
 
   const processDay = (punches, date) => {
     const dayData = {
@@ -144,23 +164,39 @@ export const calculateWorkerProductivity = (productivityParameters) => {
 
     let dayWorkingMinutes = effectiveWorkEnd > effectiveWorkStart ? effectiveWorkEnd - effectiveWorkStart : 0;
 
-    if (effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
+    // Subtract lunch time only if isLunchConsider is false
+    if (!options.isLunchConsider && effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
       const overlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
       dayWorkingMinutes -= Math.max(0, overlap);
     }
 
+    // Subtract only intervals where isBreakConsider is false
     intervals.forEach(interval => {
-      const start = timeToMinutes(interval.from);
-      const end = timeToMinutes(interval.to);
-      if (effectiveWorkStart < end && effectiveWorkEnd > start) {
-        const overlap = Math.min(effectiveWorkEnd, end) - Math.max(effectiveWorkStart, start);
-        dayWorkingMinutes -= Math.max(0, overlap);
+      if (!interval.isBreakConsider) {
+        const start = timeToMinutes(interval.from);
+        const end = timeToMinutes(interval.to);
+        if (effectiveWorkStart < end && effectiveWorkEnd > start) {
+          const overlap = Math.min(effectiveWorkEnd, end) - Math.max(effectiveWorkStart, start);
+          dayWorkingMinutes -= Math.max(0, overlap);
+        }
       }
     });
 
     dayData.workingMinutes = Math.max(0, dayWorkingMinutes);
     dayData.permissionMinutes = permissionTime;
+    dayData.salaryDeduction = permissionTime * perMinuteSalary;
 
+    // Create report entry
+    const reportEntry = {
+      date: formatDate(date),
+      inTime: formatTime(firstPunch.time),
+      outTime: punches.length > 1 ? formatTime(lastPunch.time) : '-',
+      workedHours: (dayData.workingMinutes / 60).toFixed(2) + ' hrs',
+      permissionMins: Math.round(permissionTime),
+      deduction: formatCurrency(dayData.salaryDeduction)
+    };
+
+    report.push(reportEntry);
     totalWorkingMinutes += dayData.workingMinutes;
     totalPermissionMinutes += permissionTime;
     dailyBreakdown.push(dayData);
@@ -205,10 +241,18 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     : 0;
 
   const totalSalaryDeduction = originalSalary - finalSalary;
-
   const originalSalaryForPeriod = originalSalary;
 
+  // Create the final summary in the requested format
+  const finalSummary = {
+    "Total Working Hours": `${(totalWorkingMinutes / 60).toFixed(2)} hours`,
+    "Total Permission Time": `${Math.round(totalPermissionMinutes)} minutes`,
+    "Total Salary Deductions": formatCurrency(totalSalaryDeduction),
+    "Final Salary": formatCurrency(finalSalary)
+  };
+
   return {
+    // Original structure maintained for backward compatibility
     totalDays,
     workingDays: totalDays,
     totalWorkingHours: totalWorkingMinutes / 60,
@@ -254,7 +298,10 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       permissionTimeMinutes,
       salaryDeductionPerBreak,
       standardWorkingMinutesPerDay: standardWorkingMinutes
-    }
+    },
+    // New formatted data as requested
+    finalSummary,
+    report
   };
 };
 
@@ -283,6 +330,13 @@ function emptyResponse() {
         perDaySalary: 0
       }
     },
-    configuration: {}
+    configuration: {},
+    finalSummary: {
+      "Total Working Hours": "0 hours",
+      "Total Permission Time": "0 minutes",
+      "Total Salary Deductions": "₹0.00",
+      "Final Salary": "₹0.00"
+    },
+    report: []
   };
 }
