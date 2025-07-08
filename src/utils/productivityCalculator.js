@@ -68,16 +68,6 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return `${day.toString().padStart(2, '0')} ${month}`;
   };
 
-  const isDateInRange = (date, fromDate, toDate) => {
-    const checkDate = new Date(date);
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    checkDate.setHours(0, 0, 0, 0);
-    from.setHours(0, 0, 0, 0);
-    to.setHours(0, 0, 0, 0);
-    return checkDate >= from && checkDate <= to;
-  };
-
   const isSunday = (date) => {
     const day = new Date(date);
     return day.getDay() === 0; // Sunday is 0
@@ -94,6 +84,11 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     }
     
     return dates;
+  };
+
+  const countSundaysInRange = (fromDate, toDate) => {
+    const dates = generateDateRange(fromDate, toDate);
+    return dates.filter(date => isSunday(date)).length;
   };
 
   const isSingleDay = new Date(fromDate).toDateString() === new Date(toDate).toDateString();
@@ -115,9 +110,15 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     standardWorkingMinutes -= (intervalEnd - intervalStart);
   });
 
-  const filteredData = attendanceData.filter(record =>
-    isDateInRange(record.date, fromDate, toDate)
-  );
+  const filteredData = attendanceData.filter(record => {
+    const recordDate = new Date(record.date);
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    recordDate.setHours(0, 0, 0, 0);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(0, 0, 0, 0);
+    return recordDate >= from && recordDate <= to;
+  });
 
   if (filteredData.length === 0 && isSingleDay) {
     return { ...emptyResponse() };
@@ -126,15 +127,16 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   const worker = filteredData.length > 0 ? (filteredData[0].worker || {}) : {};
   const originalSalary = worker.salary || 0;
 
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const assumedWorkingDays = daysInMonth - 4;
+  // Calculate working days for the given period
+  const allDates = generateDateRange(fromDate, toDate);
+  const totalDaysInPeriod = allDates.length;
+  const totalSundaysInPeriod = countSundaysInRange(fromDate, toDate);
+  const totalWorkingDaysInPeriod = totalDaysInPeriod - totalSundaysInPeriod;
 
-  const perDaySalary = assumedWorkingDays > 0 ? originalSalary / assumedWorkingDays : 0;
+  // Calculate per day and per minute salary based on working days in the period
+  const perDaySalary = totalWorkingDaysInPeriod > 0 ? originalSalary / totalWorkingDaysInPeriod : 0;
   const perMinuteSalary = standardWorkingMinutes > 0 ? perDaySalary / standardWorkingMinutes : 0;
-  const totalExpectedMinutes = assumedWorkingDays * standardWorkingMinutes;
+  const totalExpectedMinutes = totalWorkingDaysInPeriod * standardWorkingMinutes;
 
   let totalWorkingMinutes = 0;
   let totalPermissionMinutes = 0;
@@ -144,9 +146,6 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   let totalAbsentDays = 0;
   let totalSundayCount = 0;
 
-  // Generate all dates in the range
-  const allDates = generateDateRange(fromDate, toDate);
-  
   // Group attendance data by date
   const groupedByDate = {};
   filteredData.forEach(record => {
@@ -312,33 +311,35 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   });
 
   const totalDays = dailyBreakdown.length;
-  const workingDays = totalDays - totalSundayCount;
-  const actualWorkingDays = workingDays - totalAbsentDays;
+  const actualWorkingDays = totalWorkingDaysInPeriod - totalAbsentDays;
   const productivityPercentage = totalExpectedMinutes > 0 ? (totalWorkingMinutes / totalExpectedMinutes) * 100 : 0;
   const averageWorkingHours = actualWorkingDays > 0 ? (totalWorkingMinutes / actualWorkingDays) / 60 : 0;
   const punctualityScore = actualWorkingDays > 0 ? ((actualWorkingDays - punctualityViolations) / actualWorkingDays) * 100 : 0;
-  const attendanceRate = workingDays > 0 ? (actualWorkingDays / workingDays) * 100 : 0;
+  const attendanceRate = totalWorkingDaysInPeriod > 0 ? (actualWorkingDays / totalWorkingDaysInPeriod) * 100 : 0;
 
-  // Calculate salary deductions
+  // Calculate salary components
+  const salaryFromWorkingMinutes = totalWorkingMinutes * perMinuteSalary;
   const totalAbsentDeduction = totalAbsentDays * perDaySalary;
   const totalPermissionDeduction = totalPermissionMinutes * perMinuteSalary;
   const totalSalaryDeduction = totalAbsentDeduction + totalPermissionDeduction;
 
-  const finalSalary = totalExpectedMinutes > 0
-    ? (originalSalary * totalWorkingMinutes) / totalExpectedMinutes
-    : originalSalary - totalSalaryDeduction;
-
-  const originalSalaryForPeriod = originalSalary;
+  // Final salary calculation
+  const finalSalary = Math.max(0, originalSalary - totalSalaryDeduction);
 
   // Create the final summary in the requested format
   const finalSummary = {
+    "Total Days in Period": totalDaysInPeriod,
+    "Total Working Days": totalWorkingDaysInPeriod,
+    "Total Sundays": totalSundaysInPeriod,
+    "Total Absent Days": totalAbsentDays,
+    "Actual Working Days": actualWorkingDays,
     "Total Working Hours": `${(totalWorkingMinutes / 60).toFixed(2)} hours`,
     "Total Permission Time": `${Math.round(totalPermissionMinutes)} minutes`,
+    "Absent Deduction": formatCurrency(totalAbsentDeduction),
+    "Permission Deduction": formatCurrency(totalPermissionDeduction),
     "Total Salary Deductions": formatCurrency(totalSalaryDeduction),
-    "Total Absent Days": totalAbsentDays,
-    "Total Sundays": totalSundayCount,
     "Attendance Rate": `${attendanceRate.toFixed(1)}%`,
-    "Final Salary": formatCurrency(Math.max(0, finalSalary))
+    "Final Salary": formatCurrency(finalSalary)
   };
 
   return {
@@ -350,7 +351,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     totalPermissionTime: totalPermissionMinutes,
     totalSalaryDeduction,
     totalAbsentDays,
-    totalSundayCount,
+    totalSundayCount: totalSundaysInPeriod,
     productivityPercentage,
     dailyBreakdown: dailyBreakdown.map(day => ({
       ...day,
@@ -364,15 +365,17 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     summary: {
       punctualityScore,
       attendanceRate,
-      finalSalary: Math.max(0, finalSalary),
+      finalSalary,
       originalSalary,
-      originalSalaryForPeriod,
-      salaryFromWorkingMinutes: totalWorkingMinutes * perMinuteSalary,
+      originalSalaryForPeriod: originalSalary,
+      salaryFromWorkingMinutes,
       perMinuteSalary,
       perDaySalary,
-      workingDaysInMonth: assumedWorkingDays,
+      totalWorkingDaysInPeriod,
+      totalDaysInPeriod,
+      totalSundaysInPeriod,
       totalAbsentDays,
-      totalSundayCount,
+      actualWorkingDays,
       absentDeduction: totalAbsentDeduction,
       permissionDeduction: totalPermissionDeduction,
       worker: {
@@ -419,8 +422,11 @@ function emptyResponse() {
       finalSalary: 0,
       originalSalary: 0,
       perMinuteSalary: 0,
+      totalWorkingDaysInPeriod: 0,
+      totalDaysInPeriod: 0,
+      totalSundaysInPeriod: 0,
       totalAbsentDays: 0,
-      totalSundayCount: 0,
+      actualWorkingDays: 0,
       absentDeduction: 0,
       permissionDeduction: 0,
       worker: {
@@ -434,12 +440,17 @@ function emptyResponse() {
     },
     configuration: {},
     finalSummary: {
+      "Total Days in Period": 0,
+      "Total Working Days": 0,
+      "Total Sundays": 0,
+      "Total Absent Days": 0,
+      "Actual Working Days": 0,
       "Total Working Hours": "0 hours",
       "Total Permission Time": "0 minutes",
-      "Total Salary Deductions": "₹0.00",
-      "Total Absent Days": 0,
-      "Total Sundays": 0,
+      "Absent Deduction": "₹0.00",
       "Attendance Rate": "0%",
+      "Permission Deduction": "₹0.00",
+      "Total Salary Deductions": "₹0.00",
       "Final Salary": "₹0.00"
     },
     report: []

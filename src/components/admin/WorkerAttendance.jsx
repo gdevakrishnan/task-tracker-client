@@ -126,6 +126,7 @@ const WorkerAttendance = () => {
             const lightGray = [0, 0, 0];
             const darkGray = [0, 0, 0];
             const header = [234, 241, 250];
+            const salaryColor = [37, 99, 235]; // Blue color for final salary
 
             // Header
             doc.setFillColor(...header);
@@ -150,7 +151,7 @@ const WorkerAttendance = () => {
                 currentY += 30;
             }
 
-            // Summary Section
+            // Summary Section with Bold Final Salary
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
@@ -172,7 +173,28 @@ const WorkerAttendance = () => {
                     displayValue = formatCurrency(value);
                 }
 
-                doc.text(`${key}: ${displayValue}`, 20, yPos);
+                // Check if this is the final salary field and make it bold
+                const isFinalSalary = key.toLowerCase().includes('final salary');
+
+                if (isFinalSalary) {
+                    // Set bold font for final salary
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12); // Slightly larger font
+                    doc.setTextColor(...salaryColor); // Blue color to make it stand out
+
+                    // Add a highlight box around final salary (optional)
+                    doc.setDrawColor(...salaryColor);
+                    doc.setLineWidth(0.5);
+
+                    doc.text(`${key}: ${displayValue}`, 20, yPos);
+
+                    // Reset to normal font for other entries
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.setTextColor(...secondaryColor);
+                } else {
+                    doc.text(`${key}: ${displayValue}`, 20, yPos);
+                }
             });
 
             currentY += (summaryEntries.length * 8) + 20;
@@ -185,9 +207,13 @@ const WorkerAttendance = () => {
             currentY += 15;
 
             // Create table headers
+            doc.setFillColor(240, 240, 240); // Light gray background for headers
+            doc.rect(20, currentY - 5, 180, 10, 'F'); // Header background
+
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
-            doc.text('Date', 20, currentY);
+            doc.setTextColor(...primaryColor);
+            doc.text('Date', 22, currentY);
             doc.text('In Time', 50, currentY);
             doc.text('Out Time', 80, currentY);
             doc.text('Worked Hours', 110, currentY);
@@ -200,16 +226,24 @@ const WorkerAttendance = () => {
 
             // Add table data with cleaned currency values
             doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...secondaryColor);
+
             reportData.report.forEach((row, index) => {
                 if (currentY > 270) { // Check if we need a new page
                     doc.addPage();
                     currentY = 20;
                 }
 
+                // Alternate row colors for better readability
+                if (index % 2 === 0) {
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(20, currentY - 3, 180, 8, 'F');
+                }
+
                 // Clean the deduction value
                 const cleanDeduction = row.deduction ? formatCurrency(row.deduction) : 'Rs. 0';
 
-                doc.text(row.date || '', 20, currentY);
+                doc.text(row.date || '', 22, currentY);
                 doc.text(row.inTime || '', 50, currentY);
                 doc.text(row.outTime || '', 80, currentY);
                 doc.text(row.workedHours || '', 110, currentY);
