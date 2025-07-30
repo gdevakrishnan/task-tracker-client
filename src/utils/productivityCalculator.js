@@ -171,46 +171,80 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     let effectiveWorkEnd = punches.length > 1 ? Math.min(lastPunch.time, workEnd) : workEnd;
     let permissionTime = 0;
 
+    // Fixed permission time calculation for late arrival
     if (firstPunch.time > workStart) {
       const lateMinutes = firstPunch.time - workStart;
       if (lateMinutes <= permissionTimeMinutes) {
         permissionTime += lateMinutes;
         dayData.issues.push(`Late arrival: ${Math.round(lateMinutes)} minutes (within permission)`);
       } else {
-        permissionTime += permissionTimeMinutes;
-        const excessLateMinutes = lateMinutes - permissionTimeMinutes;
+        // Add both permission time and excess late minutes to total permission time
+        permissionTime += lateMinutes; // Total late minutes (15 + 27 = 42 in the example)
         punctualityViolations++;
-        dayData.issues.push(`Excessive late arrival: ${Math.round(excessLateMinutes)} minutes`);
+        dayData.issues.push(`Late arrival: ${Math.round(lateMinutes)} minutes (${permissionTimeMinutes} permission + ${Math.round(lateMinutes - permissionTimeMinutes)} excess)`);
       }
     }
 
+    // Fixed early departure calculation
     if (lastPunch.time < workEnd && punches.length > 1) {
       const earlyMinutes = workEnd - lastPunch.time;
       if (earlyMinutes > permissionTimeMinutes) {
         const excessEarlyMinutes = earlyMinutes - permissionTimeMinutes;
-        dayData.issues.push(`Early departure: ${Math.round(excessEarlyMinutes)} minutes`);
+        permissionTime += earlyMinutes; // Add total early minutes
+        dayData.issues.push(`Early departure: ${Math.round(earlyMinutes)} minutes (${permissionTimeMinutes} permission + ${Math.round(excessEarlyMinutes)} excess)`);
+      } else {
+        permissionTime += earlyMinutes;
+        dayData.issues.push(`Early departure: ${Math.round(earlyMinutes)} minutes (within permission)`);
       }
     }
 
     let dayWorkingMinutes = effectiveWorkEnd > effectiveWorkStart ? effectiveWorkEnd - effectiveWorkStart : 0;
 
-    // Subtract lunch time only if isLunchConsider is false
-    if (!options.isLunchConsider && effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
-      const overlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
-      dayWorkingMinutes -= Math.max(0, overlap);
+    // Fixed lunch time calculation
+    if (!options.isLunchConsider) {
+      if (considerOvertime) {
+        // If overtime is considered, only subtract lunch if worker was present during lunch hours
+        if (effectiveWorkStart < lunchEnd && effectiveWorkEnd > lunchStart) {
+          const overlap = Math.min(effectiveWorkEnd, lunchEnd) - Math.max(effectiveWorkStart, lunchStart);
+          dayWorkingMinutes -= Math.max(0, overlap);
+        }
+      } else {
+        // If overtime is not considered, always subtract lunch from 12pm to 1pm
+        const standardLunchDeduction = lunchEnd - lunchStart;
+        dayWorkingMinutes -= standardLunchDeduction;
+        
+        // If worker punched out early for lunch (e.g., 12:30pm), don't count that 30min
+        if (firstPunch.time > lunchStart && firstPunch.time < lunchEnd) {
+          // Worker came late and missed some lunch time, but we still deduct full lunch
+          // This is already handled by the standard lunch deduction above
+        }
+      }
     }
 
-    // Subtract only intervals where isBreakConsider is false
+    // Fixed interval calculation
     intervals.forEach(interval => {
       if (!interval.isBreakConsider) {
         const start = timeToMinutes(interval.from);
         const end = timeToMinutes(interval.to);
-        if (effectiveWorkStart < end && effectiveWorkEnd > start) {
-          const overlap = Math.min(effectiveWorkEnd, end) - Math.max(effectiveWorkStart, start);
-          dayWorkingMinutes -= Math.max(0, overlap);
+        
+        if (considerOvertime) {
+          // Only subtract interval if worker was present during interval
+          if (effectiveWorkStart < end && effectiveWorkEnd > start) {
+            const overlap = Math.min(effectiveWorkEnd, end) - Math.max(effectiveWorkStart, start);
+            dayWorkingMinutes -= Math.max(0, overlap);
+          }
+        } else {
+          // Always subtract interval time regardless of worker presence
+          dayWorkingMinutes -= (end - start);
         }
       }
     });
+
+    // Apply overtime consideration
+    if (!considerOvertime) {
+      // If overtime is not considered, cap working minutes at standard working minutes
+      dayWorkingMinutes = Math.min(dayWorkingMinutes, standardWorkingMinutes);
+    }
 
     dayData.workingMinutes = Math.max(0, dayWorkingMinutes);
     dayData.permissionMinutes = permissionTime;

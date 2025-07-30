@@ -8,8 +8,8 @@ import {
   FaComments,
   FaPizzaSlice,
   FaRegCalendarCheck,
-  FaRegBell
-
+  FaRegBell,
+  FaWpforms
 } from 'react-icons/fa';
 import { useAuth } from '../../hooks/useAuth';
 import { getMyLeaves } from '../../services/leaveService';
@@ -94,6 +94,11 @@ const WorkerLayout = ({ children }) => {
       to: '/worker/leave-apply',
       icon: <FaCalendarPlus style={{ color: '#9B59B6' }} />,
       label: 'Apply for Leave'
+    },
+    {
+      to: '/worker/permission-requests',
+      icon: <FaWpforms style={{ color: '#DDE44C' }} />,
+      label: 'Apply for Permission'
     },
     {
       to: '/worker/leave-requests',
