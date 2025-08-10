@@ -7,7 +7,6 @@ import Comments from '../../components/worker/Comments';
 import FoodRequest from '../../components/worker/FoodRequest';
 import AttendanceReport from '../../components/worker/AttendanceReport';
 import Notifications from '../../components/worker/Notifications';
-import PermissionRequests from '../../components/worker/ApplyForPermission';
 
 const WorkerDashboard = () => {
   return (
@@ -17,7 +16,6 @@ const WorkerDashboard = () => {
         <Route path="/attendance" element={<AttendanceReport />} />
         <Route path="/leave-apply" element={<LeaveApplication />} />
         <Route path="/leave-requests" element={<LeaveRequests />} />
-        <Route path="/permission-requests" element={<PermissionRequests />} />
         <Route path="/comments" element={<Comments />} />
         <Route path="/food-request" element={<FoodRequest />} />
         <Route path="/notifications" element={<Notifications />} />

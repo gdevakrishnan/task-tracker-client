@@ -14,6 +14,7 @@ import appContext from '../../context/AppContext';
 import { FaMoneyBillAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import CountUp from 'react-countup';
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 const Dashboard = () => {
   const { subdomain } = useContext(appContext);
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [topics, setTopics] = useState([]);
   const [columns, setColumns] = useState([]);
+  const [showAllRecentTasks, setShowAllRecentTasks] = useState(false); 
 
   // prepare breakdown for tooltip
   const baseSalary = typeof user?.salary === 'number' ? user.salary : 0;
@@ -97,7 +99,7 @@ const Dashboard = () => {
   }
 
   return (
-     <div>
+    <div>
       <div
         className="mb-6 rounded-lg p-6 shadow-lg bg-gradient-to-r from-black to-black"
       >
@@ -148,7 +150,7 @@ const Dashboard = () => {
                       <FaMoneyBillAlt className="h-6 w-6 text-yellow-300" />
             </div>
             <div>
-             <p className="text-sm text-blue-200">Final Monthly Salary</p>
+            <p className="text-sm text-blue-200">Final Monthly Salary</p>
              {finalSalary > 0 ? (
                 <div
                   title={
@@ -172,7 +174,7 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div> 
+      </div>
 
 
       {
@@ -205,7 +207,7 @@ const Dashboard = () => {
         </h2>
         <CustomTaskForm />
       </Card>
-      
+
       <h1 className="text-2xl font-bold mb-6 flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -222,60 +224,77 @@ const Dashboard = () => {
       </Card>
 
       <Card
-        title={
-          <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            Your Recent Activity
-          </div>
-        }
-      >
-        {tasks.length === 0 ? (
-          <p className="text-gray-500 py-4 text-center">
-            No task submissions yet. Use the form above to submit your first task!
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {tasks.slice(0, 5).map((task) => (
-              <div
-                key={task._id}
-                className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">
-                      Submitted task: {task.points} points
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(task.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-green-100 text-green-800 text-sm font-medium px-2 py-1 rounded-full">
-                    +{task.points}
-                  </div>
-                </div>
-
-                {task.topics && task.topics.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-1">Topics:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {task.topics.map((topic, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                        >
-                          {topic.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+    title={
+      <div className="flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Your Recent Activity
+      </div>
+    }
+  >
+    {tasks.length === 0 ? (
+      <p className="text-gray-500 py-4 text-center">
+        No task submissions yet. Use the form above to submit your first task!
+      </p>
+    ) : (
+      <div className="space-y-4">
+        {/* CONDITIONAL RENDERING OF TASKS */}
+        {(showAllRecentTasks ? tasks : tasks.slice(0, 5)).map((task) => ( //
+          <div
+            key={task._id}
+            className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium">
+                  Submitted task: {task.points} points
+                </p>
+                <p className="text-sm text-gray-500">
+                  {new Date(task.createdAt).toLocaleString()}
+                </p>
               </div>
-            ))}
+              <div className="bg-green-100 text-green-800 text-sm font-medium px-2 py-1 rounded-full">
+                +{task.points}
+              </div>
+            </div>
+
+            {task.topics && task.topics.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-1">Topics:</p>
+                <div className="flex flex-wrap gap-1">
+                  {task.topics.map((topic, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                    >
+                      {topic?.name || 'Unknown Topic'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        ))}
+        {/* END CONDITIONAL RENDERING OF TASKS */}
+
+        {/* "View All / Show Less" BUTTON */}
+        {tasks.length > 5 && ( // Only show if more than 5 tasks exist
+          <button
+            onClick={() => setShowAllRecentTasks(!showAllRecentTasks)} // Toggle visibility
+            className="mt-4 w-full py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md flex items-center justify-center" //
+          >
+            {showAllRecentTasks ? ( // Change text and icon based on state
+              <>Show Less <FaChevronUp className="ml-1" /></> //
+            ) : (
+              <>View All ({tasks.length}) Tasks <FaChevronDown className="ml-1" /></> //
+            )}
+          </button>
         )}
-      </Card>
+        {/* END "View All / Show Less" BUTTON */}
+      </div>
+    )}
+  </Card>
 
       <div className="mt-6">
         <Scoreboard department={user.department} />

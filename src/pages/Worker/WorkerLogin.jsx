@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+// attendance UI/client/src/pages/Worker/WorkerLogin.jsx
+
+import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -12,8 +14,11 @@ import { getPublicWorkers } from '../../services/workerService';
 import Spinner from '../../components/common/Spinner';
 import appContext from '../../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import Modal from '../../components/common/Modal'; // Add this line
+import Button from '../../components/common/Button';
 
 const WorkerLogin = () => {
+  const [showWrongSubdomainModal, setShowWrongSubdomainModal] = useState(false);
   const [workers, setWorkers] = useState([]);
   const [filteredWorkers, setFilteredWorkers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,6 +30,7 @@ const WorkerLogin = () => {
   const [department, setDepartment] = useState('All');
   const [manualSubdomain, setManualSubdomain] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const manualSubdomainInputRef = useRef(null);
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -37,33 +43,60 @@ const WorkerLogin = () => {
   // Handle subdomain submission
   const handleSubdomainSubmit = (e) => {
     e.preventDefault();
-    if (!manualSubdomain) {
+    if (!manualSubdomain.trim()) {
       toast.error('Please enter a subdomain.');
       return;
     }
-    localStorage.setItem('tasktracker-subdomain', manualSubdomain);
-    setSubdomain(manualSubdomain);
+    // Set 'main' as a fallback if manualSubdomain is empty/whitespace
+    localStorage.setItem('tasktracker-subdomain', manualSubdomain.trim() || 'main');
+    setSubdomain(manualSubdomain.trim() || 'main');
   };
 
-  // Load workers
   const loadWorkers = useCallback(async () => {
-    if (!subdomain || subdomain === 'main') return;
+    // Keep this check to prevent unnecessary API calls if subdomain is already 'main'
+    if (!subdomain || subdomain === 'main') {
+      setIsLoadingWorkers(false);
+      return;
+    }
 
     try {
       setIsLoadingWorkers(true);
       const workersData = await getPublicWorkers({ subdomain });
-      setWorkers(workersData || []);
+
+      // MODIFIED BLOCK: Ensure the modal is shown when no workers are found for the subdomain
+      if (!Array.isArray(workersData) || workersData.length === 0) {
+        setShowWrongSubdomainModal(true); // Directly show the modal
+        setWorkers([]); // Clear any previous worker data
+        setFilteredWorkers([]);
+        setSelectedWorker(null);
+        // Do NOT reset subdomain here. The 'Re-enter Company Name' button in the modal will handle this.
+        return; // Exit the function to prevent further processing of empty data
+      }
+
+      setWorkers(workersData); // Only set workers if data is valid
     } catch (error) {
       console.error('Employee load error:', error);
-      toast.error('Failed to load employees. Please try again later.');
+      // If there's an API error, it could also mean a wrong subdomain or server issue.
+      // Show the modal in this case too, or handle specifically if you prefer a different error message.
+      setShowWrongSubdomainModal(true); // Consider showing the modal for fetch errors too
+      setWorkers([]); // Clear data on error
+      setFilteredWorkers([]);
+      setSelectedWorker(null);
+      // toast.error('Failed to load employees. Please try again later.'); // Optional: keep toast for network/server errors
     } finally {
       setIsLoadingWorkers(false);
     }
-  }, [subdomain]);
+  }, [subdomain, setSubdomain]);
 
   useEffect(() => {
     loadWorkers();
-  }, [loadWorkers, subdomain]);
+  }, [loadWorkers, subdomain]); // Keep subdomain as a dependency to react to its changes
+
+  useEffect(() => {
+    if ((!subdomain || subdomain === 'main') && manualSubdomainInputRef.current) {
+      manualSubdomainInputRef.current.focus();
+    }
+  }, [subdomain]);
 
   // Filter workers
   useEffect(() => {
@@ -98,14 +131,15 @@ const WorkerLogin = () => {
     }
 
     if (!subdomain || subdomain === 'main') {
-      toast.error('Subdomain is missing, please check the URL');
+      toast.error('Subdomain is missing, please enter your company name.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await login({
+      // Authenticate worker with credentials and subdomain
+      await login({
         username: selectedWorker.username,
         password,
         subdomain
@@ -191,7 +225,64 @@ const WorkerLogin = () => {
     delay: Math.random() * 5
   }));
 
-  // Show subdomain form if subdomain is missing
+  if (showWrongSubdomainModal) { // New condition: If the modal flag is true, only render the modal
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1020] to-[#1a1a2e] text-white p-4 relative overflow-hidden">
+        {/* Animated Particles Background (optional, but good for consistent background) */}
+        {particles.map((particle) => (
+          <motion.div
+            key={particle.id}
+            className="absolute rounded-full bg-blue-500/20"
+            initial={{ 
+              x: `${particle.x}%`, 
+              y: `${particle.y}%`, 
+              opacity: 0.1 + Math.random() * 0.3 
+            }}
+            animate={{ 
+              x: [`${particle.x}%`, `${particle.x + (Math.random() * 10 - 5)}%`],
+              y: [`${particle.y}%`, `${particle.y - 20}%`],
+              opacity: [0.1 + Math.random() * 0.3, 0]
+            }}
+            transition={{ 
+              repeat: Infinity,
+              duration: particle.duration,
+              delay: particle.delay,
+              ease: "linear"
+            }}
+            style={{ 
+              width: `${particle.size}px`, 
+              height: `${particle.size}px` 
+            }}
+          />
+        ))}
+        {/* Wrong Subdomain Modal */}
+        <Modal
+          isOpen={showWrongSubdomainModal}
+          onClose={() => setShowWrongSubdomainModal(false)}
+          title="Company Name Not Found"
+        >
+          <div className="text-center p-4">
+            <p className="text-lg text-gray-700 mb-6">
+              The company name you entered was not found. Please check and try again.
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setShowWrongSubdomainModal(false);
+                setSubdomain('main'); // Reset subdomain to show the input field again
+                localStorage.removeItem('tasktracker-subdomain'); // Clear from local storage
+                setManualSubdomain(''); // Clear the input field
+              }}
+            >
+              Re-enter Company Name
+            </Button>
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
+  // Original return statement logic for subdomain input form
   if (!subdomain || subdomain === 'main') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1020] to-[#1a1a2e] text-white p-4 relative overflow-hidden">
@@ -247,14 +338,14 @@ const WorkerLogin = () => {
           </div>
 
           <form onSubmit={handleSubdomainSubmit} className="space-y-4">
-            <motion.div
+          <motion.div
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <label className="text-gray-300 text-sm font-medium mb-2 block">Company Domain</label>
               <input
-                type="text"
+                ref={manualSubdomainInputRef} 
                 placeholder="e.g. company123"
                 value={manualSubdomain}
                 onChange={(e) => setManualSubdomain(e.target.value)}
@@ -285,7 +376,8 @@ const WorkerLogin = () => {
     );
   }
 
-  // Main Worker Login UI
+  // Main Worker Login UI (This part remains unchanged from previous responses for clarity,
+  // as the request specifically asked for modifications to the 'if (!subdomain || subdomain === "main")' block.)
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f1020] to-[#1a1a2e] text-white p-4 relative overflow-hidden">
       {/* Animated Particles */}
@@ -331,6 +423,26 @@ const WorkerLogin = () => {
             Employee Login
           </h1>
 
+          <button
+            onClick={() => {
+              setSubdomain('main'); // Set subdomain to 'main'
+              localStorage.removeItem('tasktracker-subdomain'); // Clear from local storage
+              setWorkers([]); // Clear workers to ensure the company input shows
+              setFilteredWorkers([]);
+              setSelectedWorker(null);
+              setSearchTerm('');
+              setPassword('');
+              setCurrentPage(1);
+              setDepartment('All');
+            }}
+            className="absolute top-10 right-4 px-4 py-2 bg-[#1d2451]/60 border border-[#2a3260] text-blue-400 rounded-lg hover:bg-[#1d2451] transition-colors flex items-center gap-2 text-sm"
+          >
+            Change Company <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+
+          </button>
+
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative flex-grow">
               <input
@@ -359,14 +471,14 @@ const WorkerLogin = () => {
           <div className="flex justify-center items-center h-96">
             <Spinner size="lg" className="text-blue-500" />
           </div>
-        ) : filteredWorkers.length === 0 ? (
+        ) : (filteredWorkers.length === 0 && (subdomain && subdomain !== 'main')) ? ( // This line was modified previously
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
             className="text-center py-16 text-gray-300"
           >
-            No employees found. Try adjusting your search or filter.
+            No employees found for {subdomain}. Try adjusting your search or filter.
             <motion.button
               whileHover={{ scale: 1.1, rotate: 180 }}
               transition={{ duration: 0.5 }}
@@ -376,6 +488,8 @@ const WorkerLogin = () => {
               <IoMdRefresh />
             </motion.button>
           </motion.div>
+        ) : filteredWorkers.length === 0 ? ( 
+          null 
         ) : (
           <>
             <motion.div 

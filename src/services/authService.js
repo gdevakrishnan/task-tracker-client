@@ -49,7 +49,6 @@ export const login = async (credentials, userType) => {
 
 export const logout = () => {
   localStorage.removeItem('token');
-  localStorage.removeItem('tasktracker-subdomain');
   localStorage.removeItem('user');
 };
 

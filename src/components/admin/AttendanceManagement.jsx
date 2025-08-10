@@ -1,5 +1,5 @@
 import React, { Fragment, useRef, useState, useEffect, useContext } from 'react';
-import { FaDownload, FaPlus } from 'react-icons/fa';
+import { FaDownload, FaPlus , FaExclamationTriangle} from 'react-icons/fa';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import Webcam from "react-webcam";
@@ -10,7 +10,6 @@ import { putAttendance, getAttendance } from '../../services/attendanceService';
 import Table from '../common/Table';
 import Spinner from '../common/Spinner';
 import { Link } from 'react-router-dom';
-
 
 const AttendanceManagement = () => {
     const [worker, setWorker] = useState({ rfid: "" });
@@ -28,6 +27,10 @@ const AttendanceManagement = () => {
     
     const { subdomain } = useContext(appContext);
     const [confirmAction, setConfirmAction] = useState(null);
+
+    const uniqueRfids = React.useMemo(() => {
+        return [...new Set(attendanceData.map(record => record.rfid).filter(rfid => rfid && rfid.trim() !== ''))];
+    }, [attendanceData]);
 
     const handleSubmit = e => {
         e.preventDefault();
@@ -179,85 +182,95 @@ function processAttendanceByDay(attendanceData) {
         return [hours, minutes, seconds].map(v => String(v).padStart(2, '0')).join(':');
     }
 
-    // Step 1: Create a map to hold all display data, grouped by employee and date
-    const displayGroups = {};
+    // Step 1: Group all raw punches by employee and date, maintaining order
+    const punchesGroupedByDay = {};
     attendanceData.forEach(record => {
         const dateKey = new Date(record.date).toISOString().split('T')[0];
-        const employeeKey = `${record.rfid || 'Unknown'}_${dateKey}`;
-        if (!displayGroups[employeeKey]) {
-            displayGroups[employeeKey] = {
-                ...record,
+        const employeeDateKey = `${record.rfid || 'Unknown'}_${dateKey}`;
+        if (!punchesGroupedByDay[employeeDateKey]) {
+            punchesGroupedByDay[employeeDateKey] = {
+                ...record, // Copy some basic info
                 date: dateKey,
-                inTimes: [],
-                outTimes: [],
+                rawPunches: [], // Store all punches for this day/worker
+                inTimes: [], // For display: list of in times
+                outTimes: [], // For display: list of out times
                 duration: '00:00:00',
-                latestTimestamp: 0,
+                latestTimestamp: new Date(record.createdAt).getTime() // Keep track for sorting final list
             };
         }
-        // Update latest timestamp for sorting
-        displayGroups[employeeKey].latestTimestamp = Math.max(
-            displayGroups[employeeKey].latestTimestamp,
+        punchesGroupedByDay[employeeDateKey].rawPunches.push(record);
+        punchesGroupedByDay[employeeDateKey].latestTimestamp = Math.max(
+            punchesGroupedByDay[employeeDateKey].latestTimestamp,
             new Date(record.createdAt).getTime()
         );
-        // Populate in/out times for display
-        if (record.presence) {
-            displayGroups[employeeKey].inTimes.push(record.time);
-        } else {
-            displayGroups[employeeKey].outTimes.push(record.time);
-        }
     });
 
-    // Step 2: Group punches by employee to process them chronologically
-    const punchesByRfid = attendanceData.reduce((acc, record) => {
-        const rfid = record.rfid || 'Unknown';
-        if (!acc[rfid]) acc[rfid] = [];
-        acc[rfid].push(record);
-        return acc;
-    }, {});
+    const processedDays = [];
 
-    // Step 3: Process each employee's punches to calculate valid durations
-    for (const rfid in punchesByRfid) {
-        // Sort this employee's punches by time
-        const records = punchesByRfid[rfid].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        
-        const inPunchesStack = []; // Use a stack to find the most recent IN for an OUT
-        
-        for (const record of records) {
-            if (record.presence) { // It's an IN punch
-                inPunchesStack.push(record);
-            } else { // It's an OUT punch
-                if (inPunchesStack.length > 0) {
-                    const lastIn = inPunchesStack.pop(); // Pair with the most recent IN
-                    
-                    const inDate = new Date(lastIn.date).toISOString().split('T')[0];
-                    const outDate = new Date(record.date).toISOString().split('T')[0];
+    for (const key in punchesGroupedByDay) {
+        const dayData = punchesGroupedByDay[key];
+        // Sort punches chronologically for the day
+        const sortedPunches = dayData.rawPunches.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-                    // Rule: Only calculate duration if it's a same-day pair
-                    if (inDate === outDate) {
-                        const inSeconds = parseTime12hToSeconds(lastIn.time);
-                        const outSeconds = parseTime12hToSeconds(record.time);
-                        
-                        if (outSeconds > inSeconds) {
-                            const duration = outSeconds - inSeconds;
-                            const summaryKey = `${rfid}_${inDate}`;
-                            
-                            // Add the calculated duration to the correct display group
-                            if (displayGroups[summaryKey]) {
-                                const currentDurationSeconds = parseDurationToSeconds(displayGroups[summaryKey].duration);
-                                displayGroups[summaryKey].duration = formatSecondsToDuration(currentDurationSeconds + duration);
-                            }
-                        }
+        let totalDurationSeconds = 0;
+        let lastInTimeSeconds = null; // To track the last "in" punch for pairing
+
+        dayData.inTimes = []; // Reset for accurate population below
+        dayData.outTimes = []; // Reset for accurate population below
+
+        for (let i = 0; i < sortedPunches.length; i++) {
+            const punch = sortedPunches[i];
+            const punchTimeSeconds = parseTime12hToSeconds(punch.time);
+
+            if (punch.presence) { // This is an IN punch
+                lastInTimeSeconds = punchTimeSeconds;
+                dayData.inTimes.push({ time: punch.time, isMissed: false }); // Always normal IN for display
+            } else { // This is an OUT punch
+                let isProblematicOut = false;
+                if (lastInTimeSeconds !== null) {
+                    // There was a preceding IN punch on this day
+                    if (punchTimeSeconds > lastInTimeSeconds) {
+                        totalDurationSeconds += (punchTimeSeconds - lastInTimeSeconds);
+                        lastInTimeSeconds = null; // Reset after a successful pair
+                    } else {
+                        // Out time is before or same as last in time on the same day (problematic)
+                        isProblematicOut = true;
                     }
-                    // If it's an overnight punch, the IN is popped from the stack and ignored, fulfilling the rule.
+                } else {
+                    // Out punch without a preceding IN punch on this day (problematic)
+                    isProblematicOut = true;
                 }
-                // If no matching IN punch is on the stack, this OUT punch is ignored.
+                
+                // Prioritize backend flag if available, otherwise use heuristic
+                dayData.outTimes.push({
+                    time: punch.time,
+                    isMissed: punch.isMissedOutPunch || isProblematicOut // Use backend flag or heuristic
+                });
             }
         }
+
+        // If an IN punch was the last punch of the day, mark it as missed OUT (for display)
+        // This handles cases where an IN is followed by no OUT on the same day.
+        if (lastInTimeSeconds !== null) {
+            // Assume end of day for missed out punch visual.
+            // This is purely for display and doesn't create a new record in DB here.
+            dayData.outTimes.push({
+                time: '-', // MODIFIED LINE: Changed 'FORGOTTEN OUT' to '-' or '' for empty default.
+                isMissed: true // Mark as missed for display
+            });
+            // Also add the duration till a standard end of day for this specific visual placeholder
+            // You might need to refine totalDurationSeconds if you want to reflect this in the duration column
+            // For now, duration calculation below is only for matched pairs.
+        }
+
+        dayData.duration = formatSecondsToDuration(totalDurationSeconds);
+        processedDays.push(dayData);
     }
 
-    // Return the processed display groups, sorted by the latest activity
-    return Object.values(displayGroups).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+    // Sort the final list of processed days by latest activity
+    return processedDays.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
 }
+
     // Function to download attendance data as CSV
     const downloadAttendanceCSV = () => {
         if (processedAttendance.length === 0) {
@@ -355,8 +368,9 @@ function processAttendanceByDay(attendanceData) {
             accessor: 'inTimes',
             render: (record) => (
                 <div>
-                    {record.inTimes.map((time, index) => (
-                        <div key={index} className="text-green-600">{time}</div>
+                    {record.inTimes.map((inPunch, index) => ( // Changed 'time' to 'inPunch' for clarity
+                        // Access 'inPunch.time' instead of just 'inPunch'
+                        <div key={index} className="text-green-600">{inPunch.time}</div>
                     ))}
                 </div>
             )
@@ -366,8 +380,20 @@ function processAttendanceByDay(attendanceData) {
             accessor: 'outTimes',
             render: (record) => (
                 <div>
-                    {record.outTimes.map((time, index) => (
-                        <div key={index} className="text-red-600">{time}</div>
+                    {record.outTimes.map((outPunch, index) => (
+                        <div
+                            key={index}
+                            // Apply gray color if isMissed is true, otherwise red
+                            // Keep 'text-red-500' if not missed for consistency, as per original.
+                            className={`flex items-center ${outPunch.isMissed ? 'text-gray-500' : 'text-red-500'}`}
+                        >
+                            {/* MODIFIED LINE: Conditionally render the time */}
+                            {outPunch.time !== '-' ? outPunch.time : ''} 
+                            {/* Display triangle icon only if isMissed is true AND it's not just a placeholder hyphen */}
+                            {outPunch.isMissed && outPunch.time !== '-' && ( // Ensure icon only shows with a time, not for empty placeholder
+                                <FaExclamationTriangle className="ml-2 text-orange-500" title="Missed Out Punch or Incomplete Pair" />
+                            )}
+                        </div>
                     ))}
                 </div>
             )
@@ -378,7 +404,6 @@ function processAttendanceByDay(attendanceData) {
             render: (record) => record.duration || '00:00:00'
         }
     ];
-
 
     return (
         <Fragment>
@@ -495,13 +520,18 @@ function processAttendanceByDay(attendanceData) {
                             onChange={e => setWorker({ rfid: e.target.value })}
                             placeholder="RFID"
                             className="border p-2 mb-2 w-full"
+                             list="rfid-suggestions"
                         />
+                        <datalist id="rfid-suggestions">
+                            {uniqueRfids.map((rfid, index) => (
+                                <option key={index} value={rfid} />
+                            ))}
+                        </datalist>
                         <Button type="submit" variant="primary" className="w-full">
                             Submit
                         </Button>
                         </form>
                     )}
-
                 <Webcam
                     ref={webcamRef}
                     style={{ width: '100%', maxWidth: 400, margin: '0 auto', border: '1px solid #ddd' }}

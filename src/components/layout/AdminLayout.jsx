@@ -91,15 +91,16 @@ const AdminLayout = () => {
       icon: <FaBuilding style={{ color: '#4A90E2' }}/>,
       label: 'Departments'
     },
-    {
-      to: '/admin/tasks',
-      icon: <FaTasks style={{ color: '#7ED321' }}/>,
-      label: 'Tasks'
-    },
+
     {
       to: '/admin/food-requests',
       icon: <FaPizzaSlice style={{ color: '#F5A623' }}/>,
       label: 'Food Requests'
+    },
+        {
+      to: '/admin/tasks',
+      icon: <FaTasks style={{ color: '#7ED321' }}/>,
+      label: 'Tasks'
     },
     {
       to: '/admin/columns',

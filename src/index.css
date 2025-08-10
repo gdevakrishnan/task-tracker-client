@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+    overflow-y: auto;
+  }
+
 /* Custom base styles */
 body {
   @apply bg-light text-dark font-sans;

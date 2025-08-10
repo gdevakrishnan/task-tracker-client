@@ -8,8 +8,8 @@ import {
   FaComments,
   FaPizzaSlice,
   FaRegCalendarCheck,
-  FaRegBell,
-  FaWpforms
+  FaRegBell
+
 } from 'react-icons/fa';
 import { useAuth } from '../../hooks/useAuth';
 import { getMyLeaves } from '../../services/leaveService';
@@ -96,11 +96,6 @@ const WorkerLayout = ({ children }) => {
       label: 'Apply for Leave'
     },
     {
-      to: '/worker/permission-requests',
-      icon: <FaWpforms style={{ color: '#DDE44C' }} />,
-      label: 'Apply for Permission'
-    },
-    {
       to: '/worker/leave-requests',
       icon: <FaCalendarCheck style={{ color: '#D0021B' }} />,
       label: 'Leave Requests',
@@ -121,7 +116,7 @@ const WorkerLayout = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex bg-gray-100">
       <Sidebar
         links={sidebarLinks}
         logoText="Employee Dashboard"
@@ -132,8 +127,8 @@ const WorkerLayout = ({ children }) => {
         onLogout={handleLogout}
       />
 
-      <div className="flex-1 overflow-auto md:ml-64">
-        <main className="p-4 md:p-6">
+      <div className="flex-1 md:ml-64"> 
+      <main className="p-4 md:p-6 min-h-0">
           {children}
         </main>
       </div>

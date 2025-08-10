@@ -1,3 +1,4 @@
+// attendance _31/client/src/components/admin/SalaryManagement.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { FaDonate } from 'react-icons/fa';
@@ -19,7 +20,7 @@ const SalaryManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
     const [formData, setFormData] = useState({
-        bonus: 0
+        bonus: '' // Changed to empty string to handle text input initially
     });
 
     // Modal states
@@ -81,18 +82,29 @@ const SalaryManagement = () => {
             : (departments.find(dept => dept.name === worker.department)?._id || worker.department);
 
         setSelectedWorker(worker);
+        setFormData({
+            bonus: '' // Reset bonus amount when opening modal
+        });
         setIsEditModalOpen(true);
     };
 
     // Handle edit worker
     const handleEditWorker = async (e) => {
         e.preventDefault();
-        await giveBonusAmount({ id: selectedWorker._id, amount: formData.bonus })
+
+        // Validate that bonus is a valid number
+        const bonusAmount = parseFloat(formData.bonus);
+        if (isNaN(bonusAmount) || bonusAmount < 0) { // Bonus should not be negative
+            toast.error('Bonus amount must be a non-negative number.');
+            return;
+        }
+
+        await giveBonusAmount({ id: selectedWorker._id, amount: bonusAmount }) // Use parsed bonusAmount
             .then((response) => {
                 toast.success(response.message);
                 loadData();
                 setFormData({
-                    bonus: 0
+                    bonus: '' // Reset to empty string after successful update
                 });
                 setIsEditModalOpen(false);
             })
@@ -104,7 +116,10 @@ const SalaryManagement = () => {
     // Handle form input change
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        // Allow empty string or numbers to be typed
+        if (value === '' || /^\d*\.?\d*$/.test(value)) { // Regex to allow only numbers and a single decimal point
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSalaryReset = async (e) => {
@@ -215,19 +230,21 @@ const SalaryManagement = () => {
             <Modal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
-                title={'Give Bonaus Amount'}
+                title={'Give Bonus Amount'}
             >
                 <form onSubmit={handleEditWorker}>
                     <div className="form-group">
-                        <label htmlFor="edit-name" className="form-label">Bonus Amount</label>
+                        <label htmlFor="bonus" className="form-label">Bonus Amount</label>
                         <input
-                            type="number"
+                            type="text" // CHANGED: from "number" to "text"
                             id="bonus"
                             name="bonus"
                             className="form-input"
                             value={formData.bonus}
                             onChange={handleChange}
                             required
+                            pattern="^\d*\.?\d*$" // ADDED: Pattern for client-side visual hint
+                            title="Please enter a valid number (e.g., 100 or 50.50)" // ADDED: Title for pattern hint
                         />
                     </div>
 

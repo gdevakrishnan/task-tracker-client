@@ -1,3 +1,4 @@
+// attendance _31/client/src/components/admin/TaskManagement.jsx
 import { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -142,16 +143,39 @@ const TaskManagement = () => {
       header: 'Topics',
       accessor: 'topics',
       render: (task) => (
-        task.topics && task.topics.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {task.topics.map((topic, index) => (
-              <span 
-                key={index} 
-                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-              >
-                {topic.name}
-              </span>
-            ))}
+        // Check if task.topics exists and has items
+        Array.isArray(task.topics) && task.topics.length > 0 ? (
+          <div className="flex flex-col space-y-2">
+            {Array.from(new Set(task.topics.map(t => t._id))) // Ensure unique main topics
+              .map(uniqueTopicId => task.topics.find(t => t._id === uniqueTopicId))
+              .filter(Boolean) // Remove any undefined topics
+              .map((topic) => {
+                // Filter subtopics based on task.selectedSubtopics
+                const selectedSubtopicIdsForThisTopic = task.selectedSubtopics && task.selectedSubtopics[topic._id]
+                  ? task.selectedSubtopics[topic._id]
+                  : [];
+
+                const displayedSubtopics = Array.isArray(topic.subtopics)
+                  ? topic.subtopics.filter(sub => selectedSubtopicIdsForThisTopic.includes(sub._id))
+                  : [];
+
+                return (
+                  <div key={topic._id} className="p-2 border border-blue-200 rounded-md bg-blue-50">
+                    <span className="font-semibold text-blue-800">{topic.name} ({topic.points} pts)</span>
+                    {displayedSubtopics.length > 0 && (
+                      <div className="mt-1 pl-2 border-l border-blue-200">
+                        <ul className="list-disc list-inside text-sm text-gray-700">
+                          {displayedSubtopics.map(sub => (
+                            <li key={sub._id}>
+                              {sub.name} (<span className="font-medium text-green-600">{sub.points} pts</span>)
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         ) : (
           <span className="text-gray-400">None</span>
@@ -262,9 +286,9 @@ const TaskManagement = () => {
                 <p className="font-medium">{selectedTask.worker?.name || 'Unknown'}</p>
               </div>
               <div>
-        <p className="text-sm text-gray-500">Department</p>
-        <p className="font-medium">{selectedTask.worker?.department?.name || 'Unknown'}</p>
-      </div>
+                <p className="text-sm text-gray-500">Department</p>
+                <p className="font-medium">{selectedTask.worker?.department?.name || 'Unknown'}</p>
+              </div>
               <div>
                 <p className="text-sm text-gray-500">Points</p>
                 <p className="font-medium">{selectedTask.points}</p>
@@ -275,22 +299,54 @@ const TaskManagement = () => {
               </div>
             </div>
             
-            {/* Topics */}
+            {/* Topics with Selected Subtopics */}
             <div>
-              <p className="text-sm text-gray-500">Topics</p>
+              <p className="text-sm text-gray-500">Topics & Selected Sub-topics</p>
               {selectedTask.topics && selectedTask.topics.length > 0 ? (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedTask.topics.map((topic, index) => (
-                    <span 
-                      key={index} 
-                      className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                    >
-                      {topic.name}
-                    </span>
-                  ))}
+                <div className="flex flex-col space-y-2 mt-1">
+                  {/* --- MODIFIED LOGIC HERE --- */}
+                  {Array.from(new Set(selectedTask.topics.map(t => t._id))) // Get unique topic IDs
+                    .map(uniqueTopicId => selectedTask.topics.find(t => t._id === uniqueTopicId)) // Find the corresponding topic object
+                    .filter(Boolean) // Remove any null/undefined results
+                    .map((topic) => {
+                      const selectedSubtopicIdsForThisTopic = selectedTask.selectedSubtopics && selectedTask.selectedSubtopics[topic._id]
+                        ? selectedTask.selectedSubtopics[topic._id]
+                        : [];
+
+                      const displayedSubtopics = Array.isArray(topic.subtopics)
+                        ? topic.subtopics.filter(sub => selectedSubtopicIdsForThisTopic.includes(sub._id))
+                        : [];
+
+                      // Only render a topic card if it has selected subtopics OR if it's a main topic with no subtopics
+                      // (meaning it was selected directly, not via subtopics)
+                      if (displayedSubtopics.length > 0 || (!topic.subtopics || topic.subtopics.length === 0)) {
+                        return (
+                          <div key={topic._id} className="p-2 border border-blue-200 rounded-md bg-blue-50">
+                            <span className="font-semibold text-blue-800">{topic.name} ({topic.points} pts)</span>
+                            {displayedSubtopics.length > 0 && (
+                              <div className="mt-1 pl-2 border-l border-blue-200">
+                                <ul className="list-disc list-inside text-sm text-gray-700">
+                                  {displayedSubtopics.map(sub => (
+                                    <li key={sub._id}>
+                                      {sub.name} (<span className="font-medium text-green-600">{sub.points} pts</span>)
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {/* If main topic has no subtopics but was explicitly chosen and displayed */}
+                            {(!topic.subtopics || topic.subtopics.length === 0) && (
+                                <span className="text-gray-600 text-sm italic block mt-1">No sub-topics for this entry.</span>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null; // Don't render if no subtopics selected and it's not a standalone main topic
+                    })}
+                  {/* --- END MODIFIED LOGIC --- */}
                 </div>
               ) : (
-                <p className="text-gray-400 mt-1">No topics selected</p>
+                <p className="text-gray-400 mt-1">No topics or sub-topics selected</p>
               )}
             </div>
             
