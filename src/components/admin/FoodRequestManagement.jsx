@@ -1,4 +1,3 @@
-// FoodRequestManagement.jsx (Clean Professional Version)
 import { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { 
@@ -15,6 +14,7 @@ import Spinner from '../common/Spinner';
 import Table from '../common/Table';
 import appContext from '../../context/AppContext';
 import Modal from '../common/Modal';
+import AdminFoodRequest from './AdminFoodRequest';// Import the new component
 
 const FoodRequestManagement = () => {
   const [requests, setRequests] = useState([]);
@@ -274,6 +274,9 @@ const FoodRequestManagement = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Food Request Management</h1>
       </div>
+
+      {/* New component for admin to submit requests */}
+      <AdminFoodRequest />
 
       {/* Email Reports Control */}
       <Card className="hover:border hover:border-dashed hover:border-purple-500 transition-all">

@@ -20,6 +20,29 @@ export const submitFoodRequest = async (foodRequestData) => {
   }
 };
 
+export const submitRequestForWorkerByAdmin = async (foodRequestData) => {
+  console.log('🔍 DEBUG: submitRequestForWorkerByAdmin called with:', foodRequestData);
+
+  if (!foodRequestData.subdomain || foodRequestData.subdomain == 'main') {
+    throw new Error('Subdomain was missing check the URL.');
+  }
+
+  if (!foodRequestData.mealType || !['breakfast', 'lunch', 'dinner'].includes(foodRequestData.mealType)) {
+    throw new Error('Valid meal type is required.');
+  }
+
+  if (!foodRequestData.workerId) {
+    throw new Error('Worker ID is required.');
+  }
+
+  try {
+    const response = await api.post('/food-requests/admin/request', foodRequestData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error('Failed to submit food request for worker');
+  }
+};
+
 export const getTodayRequests = async (foodRequestData) => {
   console.log('🔍 DEBUG: getTodayRequests called with:', foodRequestData);
   
