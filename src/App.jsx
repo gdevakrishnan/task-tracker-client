@@ -34,11 +34,17 @@ import { useEffect, useState } from 'react';
 import WorkerAttendance from './components/admin/WorkerAttendance';
 import Settings from './components/admin/Settings';
 
+// NEW COMPONENTS
+
+import ForgotPassword from './components/admin/ForgotPassword';
+import ResetPassword from './components/admin/ResetPassword';
+
+
 function App() {
   // Initialize subdomain with the actual value from localStorage immediately
   const [subdomain, setSubdomain] = useState(() => {
     const stored = localStorage.getItem('tasktracker-subdomain');
-    console.log('🔍 DEBUG: Initial subdomain from localStorage:', stored);
+    console.log('剥 DEBUG: Initial subdomain from localStorage:', stored);
     return stored || 'main'; // Default to 'main' instead of null
   });
 
@@ -48,7 +54,7 @@ function App() {
 
   // Custom function to update subdomain and localStorage
   const updateSubdomain = (newSubdomain) => {
-    console.log('🔍 DEBUG: Updating subdomain to:', newSubdomain);
+    console.log('剥 DEBUG: Updating subdomain to:', newSubdomain);
     if (newSubdomain && newSubdomain !== 'main') {
       localStorage.setItem('tasktracker-subdomain', newSubdomain);
     } else {
@@ -63,7 +69,7 @@ function App() {
     const handleStorageChange = (e) => {
       if (e.key === 'tasktracker-subdomain') {
         const newValue = e.newValue || 'main';
-        console.log('🔍 DEBUG: Storage change detected:', newValue);
+        console.log('剥 DEBUG: Storage change detected:', newValue);
         setSubdomain(newValue);
       }
     };
@@ -75,7 +81,7 @@ function App() {
       const current = getSubdomain();
       setSubdomain(prev => {
         if (prev !== current) {
-          console.log('🔍 DEBUG: Subdomain changed from', prev, 'to', current);
+          console.log('剥 DEBUG: Subdomain changed from', prev, 'to', current);
           return current;
         }
         return prev;
@@ -90,7 +96,7 @@ function App() {
 
   // Log subdomain changes for debugging
   useEffect(() => {
-    console.log('🔍 DEBUG: App.jsx subdomain state changed to:', subdomain);
+    console.log('剥 DEBUG: App.jsx subdomain state changed to:', subdomain);
   }, [subdomain]);
 
   const contextValue = {
@@ -123,6 +129,10 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="/worker/login" element={<WorkerLogin />} />
+
+          {/* NEW PASSWORD ROUTES */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Protected Admin routes with Layout */}
           <Route element={<PrivateRoute allowedRoles={['admin']} />}>

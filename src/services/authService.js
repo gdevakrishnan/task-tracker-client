@@ -1,4 +1,5 @@
 import api from '../hooks/useAxios';
+import { getAuthToken } from '../utils/authUtils';
 
 export const subdomainAvailable = async (formData) => {
   try {
@@ -82,11 +83,32 @@ export const checkAndInitAdmin = async () => {
   }
 };
 
+// New functions for password reset functionality with OTP
+export const requestPasswordResetOtp = async (data) => {
+    try {
+        const response = await api.post('/auth/request-reset-otp', data);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || new Error('Failed to request password reset OTP.');
+    }
+};
+
+export const resetPasswordWithOtp = async (data) => {
+    try {
+        const response = await api.put('/auth/reset-password-with-otp', data);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || new Error('Failed to reset password.');
+    }
+};
+
 export default {
   registerAdmin,
   login,
   logout,
   getCurrentUser,
   checkAndInitAdmin,
-  subdomainAvailable
+  subdomainAvailable,
+  requestPasswordResetOtp,
+  resetPasswordWithOtp
 };
