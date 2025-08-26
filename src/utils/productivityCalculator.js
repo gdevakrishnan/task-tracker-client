@@ -40,15 +40,15 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     if (!timeStr) return 0;
     const [time, period] = timeStr.split(' ');
     const [hours, minutes, seconds = 0] = time.split(':').map(Number);
-    
+
     let totalSeconds = seconds + (minutes * 60) + (hours * 3600);
-    
+
     if (period === 'AM') {
       if (hours === 12) totalSeconds -= 12 * 3600; // 12 AM = 0 hours
     } else if (period === 'PM') {
       if (hours !== 12) totalSeconds += 12 * 3600; // Add 12 hours for PM (except 12 PM)
     }
-    
+
     // Return total minutes with seconds as decimal
     return totalSeconds / 60;
   };
@@ -81,12 +81,12 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     const dates = [];
     const currentDate = new Date(fromDate);
     const endDate = new Date(toDate);
-    
+
     while (currentDate <= endDate) {
       dates.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     return dates;
   };
 
@@ -100,59 +100,59 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     if (punches.length === 0) return 0;
 
     let totalWorkingMinutes = 0;
-    
+
     // Debug log to see the structure
     if (punches.length > 0) {
       console.log('Sample punch record:', punches[0].record);
-      console.log('Punches with times:', punches.map(p => ({ 
-        time: p.originalTime, 
+      console.log('Punches with times:', punches.map(p => ({
+        time: p.originalTime,
         minutes: p.time,
         status: p.record.status || p.record.presence || p.record.type || 'Unknown'
       })));
     }
-    
+
     // Sum all IN→OUT intervals
     for (let i = 0; i < punches.length - 1; i++) {
       // Check for status in different possible properties
-      let currentStatus = punches[i].record.status || 
-                         punches[i].record.presence || 
-                         punches[i].record.type ||
-                         punches[i].record.Presence ||
-                         punches[i].record.STATUS;
-      
-      let nextStatus = punches[i + 1].record.status || 
-                      punches[i + 1].record.presence || 
-                      punches[i + 1].record.type ||
-                      punches[i + 1].record.Presence ||
-                      punches[i + 1].record.STATUS;
-      
+      let currentStatus = punches[i].record.status ||
+        punches[i].record.presence ||
+        punches[i].record.type ||
+        punches[i].record.Presence ||
+        punches[i].record.STATUS;
+
+      let nextStatus = punches[i + 1].record.status ||
+        punches[i + 1].record.presence ||
+        punches[i + 1].record.type ||
+        punches[i + 1].record.Presence ||
+        punches[i + 1].record.STATUS;
+
       // If no status found, assume alternating pattern starting with IN
       if (!currentStatus || !nextStatus) {
         currentStatus = i % 2 === 0 ? 'IN' : 'OUT';
         nextStatus = (i + 1) % 2 === 0 ? 'IN' : 'OUT';
       }
-      
+
       console.log(`Checking interval ${i}: ${currentStatus} (${punches[i].originalTime}) → ${nextStatus} (${punches[i + 1].originalTime})`);
-      
+
       if (currentStatus === 'IN' && nextStatus === 'OUT') {
         // Get the actual working period within work hours
         let intervalStart = Math.max(punches[i].time, workStart);
         let intervalEnd = Math.min(punches[i + 1].time, workEnd);
-        
+
         console.log(`Raw interval: ${intervalStart.toFixed(2)} → ${intervalEnd.toFixed(2)} minutes`);
-        
+
         // Only add if it's a valid working interval
         if (intervalEnd > intervalStart) {
           let workingInterval = intervalEnd - intervalStart;
-          console.log(`Working interval before deductions: ${workingInterval.toFixed(2)} minutes (${(workingInterval/60).toFixed(2)} hours)`);
-          
+          console.log(`Working interval before deductions: ${workingInterval.toFixed(2)} minutes (${(workingInterval / 60).toFixed(2)} hours)`);
+
           // Deduct lunch time from this interval if not considered as working time
           if (!isLunchConsider) {
             const lunchStart = timeToMinutes(lunchFrom);
             const lunchEnd = timeToMinutes(lunchTo);
-            
+
             console.log(`Lunch period: ${lunchStart} → ${lunchEnd} minutes`);
-            
+
             // Check if this interval overlaps with lunch time
             if (intervalStart < lunchEnd && intervalEnd > lunchStart) {
               const lunchOverlap = Math.min(intervalEnd, lunchEnd) - Math.max(intervalStart, lunchStart);
@@ -166,7 +166,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
             if (!interval.isBreakConsider) {
               const breakStart = timeToMinutes(interval.from);
               const breakEnd = timeToMinutes(interval.to);
-              
+
               // Check if this working interval overlaps with break time
               if (intervalStart < breakEnd && intervalEnd > breakStart) {
                 const breakOverlap = Math.min(intervalEnd, breakEnd) - Math.max(intervalStart, breakStart);
@@ -176,7 +176,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
             }
           });
 
-          console.log(`Final working interval: ${workingInterval.toFixed(2)} minutes (${(workingInterval/60).toFixed(2)} hours)`);
+          console.log(`Final working interval: ${workingInterval.toFixed(2)} minutes (${(workingInterval / 60).toFixed(2)} hours)`);
           totalWorkingMinutes += Math.max(0, workingInterval);
         }
       }
@@ -188,24 +188,24 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     if (!considerOvertime) {
       const standardWorkTime = workEnd - workStart;
       let expectedWorkTime = standardWorkTime;
-      
+
       // Subtract lunch from expected work time if not considered
       if (!isLunchConsider) {
         expectedWorkTime -= (timeToMinutes(lunchTo) - timeToMinutes(lunchFrom));
       }
-      
+
       // Subtract intervals from expected work time if not considered
       intervals.forEach(interval => {
         if (!interval.isBreakConsider) {
           expectedWorkTime -= (timeToMinutes(interval.to) - timeToMinutes(interval.from));
         }
       });
-      
+
       console.log(`Expected work time: ${expectedWorkTime.toFixed(2)} minutes`);
       totalWorkingMinutes = Math.min(totalWorkingMinutes, expectedWorkTime);
     }
 
-    console.log(`Final total working minutes: ${totalWorkingMinutes.toFixed(2)} (${(totalWorkingMinutes/60).toFixed(2)} hours)`);
+    console.log(`Final total working minutes: ${totalWorkingMinutes.toFixed(2)} (${(totalWorkingMinutes / 60).toFixed(2)} hours)`);
     return Math.max(0, totalWorkingMinutes);
   };
 
@@ -310,9 +310,9 @@ export const calculateWorkerProductivity = (productivityParameters) => {
 
     // Calculate actual working time
     const workingTime = calculateWorkingTime(punches, workStart, workEnd);
-    
-    // Calculate permission/penalty time
     const permissionTime = calculatePermissionTime(punches, workStart, workEnd);
+
+    const adjustedWorkingTime = Math.max(0, workingTime - permissionTime);
 
     // Generate issues/remarks
     if (firstPunch.time > workStart) {
@@ -335,7 +335,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       }
     }
 
-    dayData.workingMinutes = workingTime;
+    dayData.workingMinutes = adjustedWorkingTime;
     dayData.permissionMinutes = permissionTime;
     dayData.salaryDeduction = permissionTime * perMinuteSalary;
 
@@ -343,7 +343,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       date: formatDate(date),
       inTime: formatTime(firstPunch.time),
       outTime: punches.length > 1 ? formatTime(lastPunch.time) : '-',
-      workedHours: (dayData.workingMinutes / 60).toFixed(2) + ' hrs',
+      workedHours: (adjustedWorkingTime / 60).toFixed(2) + ' hrs',   // ✅ use adjusted time
       permissionMins: Math.round(permissionTime),
       deduction: formatCurrency(dayData.salaryDeduction),
       status: 'Present'
@@ -358,7 +358,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   const processMissedDay = (date) => {
     const dateString = date.toISOString().split('T')[0];
     const isSundayDay = isSunday(date);
-    
+
     if (isSundayDay) {
       totalSundayCount++;
       const dayData = {
@@ -411,14 +411,14 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   allDates.forEach(date => {
     const dateKey = date.toDateString();
     const dateString = date.toISOString().split('T')[0];
-    
+
     if (groupedByDate[dateKey]) {
       const punches = groupedByDate[dateKey].map(record => ({
         time: parseAttendanceTime(record.time),
         originalTime: record.time,
         record
       })).sort((a, b) => a.time - b.time);
-      
+
       if (punches.length > 0) {
         processDay(punches, dateString);
       }
