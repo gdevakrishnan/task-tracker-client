@@ -96,42 +96,37 @@ const WorkerAttendance = () => {
         }
     }, [fiteredBatch, settingsData?.batches]);
 
-    const downloadPDF = async (reportData) => {
+    const downloadPDF = async (productivityData) => {
         setIsGenerating(true);
 
         try {
             const doc = new jsPDF();
 
-            // Helper function to clean currency values
-            const cleanCurrencyValue = (value) => {
+            // Helper function to extract numeric value from currency string
+            const extractNumericValue = (value) => {
                 if (typeof value === 'string') {
-                    // Remove ₹ symbol and ¹ character, then add Rs. prefix
-                    return value.replace(/₹/g, '').replace(/¹/g, '').replace(/Rs\./g, '').trim();
+                    // Remove any currency symbols, superscript characters, and commas but preserve decimal points
+                    const cleanValue = value.replace(/[¹²³₹Rs,]/g, '').trim();
+                    return parseFloat(cleanValue) || 0;
                 }
-                return value;
+                return value || 0;
             };
 
-            // Helper function to format currency
+            // Helper function to format currency consistently with Rs. prefix
             const formatCurrency = (value) => {
-                const cleanValue = cleanCurrencyValue(value);
-                if (cleanValue && !isNaN(parseFloat(cleanValue))) {
-                    return `Rs. ${cleanValue}`;
-                }
-                return cleanValue || 'Rs. 0';
+                const numericValue = extractNumericValue(value);
+                return `Rs. ${numericValue.toFixed(2)}`;
             };
 
-            // Set up colors and fonts
+            // Set up colors
             const primaryColor = [0, 0, 0];
-            const secondaryColor = [0, 0, 0];
-            const lightGray = [0, 0, 0];
-            const darkGray = [0, 0, 0];
+            const secondaryColor = [100, 100, 100];
             const header = [234, 241, 250];
-            const salaryColor = [37, 99, 235]; // Blue color for final salary
+            const salaryColor = [37, 99, 235];
 
             // Header
             doc.setFillColor(...header);
             doc.rect(0, 0, 210, 30, 'F');
-
             doc.setTextColor(37, 99, 235);
             doc.setFontSize(20);
             doc.setFont('helvetica', 'bold');
@@ -143,15 +138,15 @@ const WorkerAttendance = () => {
             doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
 
-            if (reportData.summary?.worker) {
-                const worker = reportData.summary.worker;
+            if (productivityData.summary?.worker) {
+                const worker = productivityData.summary.worker;
                 doc.text(`Employee: ${worker.name || 'N/A'}`, 20, currentY);
                 doc.text(`Employee ID: ${worker.rfid || 'N/A'}`, 20, currentY + 8);
                 doc.text(`Email: ${worker.email || 'N/A'}`, 20, currentY + 16);
                 currentY += 30;
             }
 
-            // Summary Section with Bold Final Salary
+            // Final Summary Section
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
@@ -159,45 +154,41 @@ const WorkerAttendance = () => {
             doc.setFont('helvetica', 'normal');
             currentY += 10;
 
-            // Create summary content with cleaned currency values
-            const summaryEntries = Object.entries(reportData.finalSummary);
+            // Format all currency values consistently
+            const absentDeduction = formatCurrency(productivityData.summary.absentDeduction || 0);
+            const permissionDeduction = formatCurrency(productivityData.summary.permissionDeduction || 0);
+            const totalDeduction = formatCurrency(productivityData.summary.totalSalaryDeduction || 0);
+            const finalSalary = formatCurrency(productivityData.summary.finalSalary || 0);
+
+            // Display summary data with consistent currency formatting
             doc.setFontSize(10);
             doc.setTextColor(...secondaryColor);
 
-            summaryEntries.forEach(([key, value], index) => {
-                const yPos = currentY + (index * 8);
+            const summaryData = [
+                `Total Days in Period: ${productivityData.finalSummary["Total Days in Period"]}`,
+                `Total Working Days: ${productivityData.finalSummary["Total Working Days"]}`,
+                `Total Sundays: ${productivityData.finalSummary["Total Sundays"]}`,
+                `Total Absent Days: ${productivityData.finalSummary["Total Absent Days"]}`,
+                `Actual Working Days: ${productivityData.finalSummary["Actual Working Days"]}`,
+                `Total Working Hours: ${productivityData.finalSummary["Total Working Hours"]}`,
+                `Total Permission Time: ${productivityData.finalSummary["Total Permission Time"]}`,
+                `Absent Deduction: ${absentDeduction}`,
+                `Permission Deduction: ${permissionDeduction}`,
+                `Total Salary Deductions: ${totalDeduction}`,
+                `Attendance Rate: ${productivityData.finalSummary["Attendance Rate"]}`,
+            ];
 
-                // Clean the value if it contains currency
-                let displayValue = value;
-                if (typeof value === 'string' && (value.includes('₹') || value.includes('¹') || value.includes('Rs.'))) {
-                    displayValue = formatCurrency(value);
-                }
-
-                // Check if this is the final salary field and make it bold
-                const isFinalSalary = key.toLowerCase().includes('final salary');
-
-                if (isFinalSalary) {
-                    // Set bold font for final salary
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(12); // Slightly larger font
-                    doc.setTextColor(...salaryColor); // Blue color to make it stand out
-
-                    // Add a highlight box around final salary (optional)
-                    doc.setDrawColor(...salaryColor);
-                    doc.setLineWidth(0.5);
-
-                    doc.text(`${key}: ${displayValue}`, 20, yPos);
-
-                    // Reset to normal font for other entries
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(10);
-                    doc.setTextColor(...secondaryColor);
-                } else {
-                    doc.text(`${key}: ${displayValue}`, 20, yPos);
-                }
+            summaryData.forEach((line, index) => {
+                doc.text(line, 20, currentY + (index * 6));
             });
 
-            currentY += (summaryEntries.length * 8) + 20;
+            // Final Salary (highlighted)
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(...salaryColor);
+            doc.text(`Final Salary: ${finalSalary}`, 20, currentY + (summaryData.length * 6) + 10);
+
+            currentY += (summaryData.length * 6) + 30;
 
             // Detailed Report Section
             doc.setFontSize(14);
@@ -206,49 +197,55 @@ const WorkerAttendance = () => {
             doc.text('Detailed Daily Attendance Report', 20, currentY);
             currentY += 15;
 
-            // Create table headers
-            doc.setFillColor(240, 240, 240); // Light gray background for headers
-            doc.rect(20, currentY - 5, 180, 10, 'F'); // Header background
-
+            // Table headers
+            doc.setFillColor(240, 240, 240);
+            doc.rect(20, currentY - 5, 170, 10, 'F');
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
-            doc.text('Date', 22, currentY);
-            doc.text('In Time', 50, currentY);
-            doc.text('Out Time', 80, currentY);
-            doc.text('Worked Hours', 110, currentY);
-            doc.text('Permission (mins)', 140, currentY);
-            doc.text('Deduction', 180, currentY);
+
+            const headers = ['Date', 'In Time', 'Out Time', 'Worked Hours', 'Permission (mins)', 'Deduction'];
+            const headerPositions = [22, 45, 75, 105, 132, 165];
+
+            headers.forEach((header, index) => {
+                doc.text(header, headerPositions[index], currentY);
+            });
 
             currentY += 5;
-            doc.line(20, currentY, 200, currentY); // Header line
-            currentY += 5;
+            doc.line(20, currentY, 190, currentY);
+            currentY += 10;
 
-            // Add table data with cleaned currency values
+            // Table data - Use the calculated report data from productivityData
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...secondaryColor);
+            doc.setFontSize(9);
 
-            reportData.report.forEach((row, index) => {
-                if (currentY > 270) { // Check if we need a new page
+            productivityData.report.forEach((record, index) => {
+                if (currentY > 270) {
                     doc.addPage();
                     currentY = 20;
                 }
 
-                // Alternate row colors for better readability
+                // Alternate row colors
                 if (index % 2 === 0) {
                     doc.setFillColor(250, 250, 250);
-                    doc.rect(20, currentY - 3, 180, 8, 'F');
+                    doc.rect(20, currentY - 3, 170, 8, 'F');
                 }
 
-                // Clean the deduction value
-                const cleanDeduction = row.deduction ? formatCurrency(row.deduction) : 'Rs. 0';
+                // Clean and format the deduction value to remove superscript 1
+                let deductionValue = '-';
+                if (record.deduction) {
+                    // Remove any superscript 1 and other unwanted characters, then format properly
+                    const numericValue = extractNumericValue(record.deduction);
+                    deductionValue = `Rs. ${numericValue.toFixed(2)}`;
+                }
 
-                doc.text(row.date || '', 22, currentY);
-                doc.text(row.inTime || '', 50, currentY);
-                doc.text(row.outTime || '', 80, currentY);
-                doc.text(row.workedHours || '', 110, currentY);
-                doc.text(row.permissionMins?.toString() || '0', 150, currentY);
-                doc.text(cleanDeduction, 180, currentY);
+                doc.text(record.date || '-', 22, currentY);
+                doc.text(record.inTime || '-', 45, currentY);
+                doc.text(record.outTime || '-', 75, currentY);
+                doc.text(record.workedHours || '-', 105, currentY);
+                doc.text(record.permissionMins?.toString() || '-', 140, currentY);
+                doc.text(deductionValue, 165, currentY);
 
                 currentY += 8;
             });
@@ -258,12 +255,12 @@ const WorkerAttendance = () => {
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
                 doc.setFontSize(8);
-                doc.setTextColor(...darkGray);
+                doc.setTextColor(100, 100, 100);
                 doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 285);
                 doc.text(`Page ${i} of ${pageCount}`, 170, 285);
             }
 
-            // Save the PDF
+            // Save PDF
             const fileName = `productivity_report_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
 
@@ -492,11 +489,7 @@ const WorkerAttendance = () => {
                     <Button
                         variant="success"
                         className="flex items-center"
-                        onClick={() => downloadPDF({
-                            finalSummary: productivityData.finalSummary,
-                            report: productivityData.report,
-                            summary: productivityData.summary
-                        })}
+                        onClick={() => downloadPDF(productivityData)}
                         disabled={isGenerating}
                     >
                         <FaMoneyBillWave className="mr-2" />
