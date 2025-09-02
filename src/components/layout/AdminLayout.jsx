@@ -13,7 +13,8 @@ import {
   FaClipboardList,
   FaRegCalendarCheck,
   FaRegBell,
-  FaDollarSign
+  FaDollarSign,
+  FaAsterisk
 } from 'react-icons/fa';
 import { useAuth } from '../../hooks/useAuth';
 import { getAllLeaves } from '../../services/leaveService';
@@ -122,6 +123,11 @@ const AdminLayout = () => {
       icon: <FaCalendarAlt style={{ color: '#D0021B' }}/>,
       label: 'Leave Requests',
       badge: pendingLeaves > 0 ? pendingLeaves : null
+    },
+    {
+      to: '/admin/holidays',
+      icon: <FaAsterisk style={{ color: '#02e95a' }}/>,
+      label: 'Holidays'
     },
     {
       to: '/admin/notifications',

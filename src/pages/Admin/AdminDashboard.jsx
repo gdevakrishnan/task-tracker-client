@@ -11,6 +11,7 @@ import DepartmentManagement from '../../components/admin/DepartmentManagement';
 import FoodRequestManagement from '../../components/admin/FoodRequestManagement';
 import CustomTasks from '../../components/admin/CustomTasks';
 import SalaryManagement from '../../components/admin/SalaryManagement';
+import HolidayManagement from '../../components/admin/HolidayManagement';
 
 const AdminDashboard = () => {
   return (
@@ -22,6 +23,7 @@ const AdminDashboard = () => {
       <Route path="topics" element={<TopicManagement />} />
       <Route path="columns" element={<ColumnManagement />} />
       <Route path="leaves" element={<LeaveManagement />} />
+      <Route path="holidays" element={<HolidayManagement />} />
       <Route path="comments" element={<CommentManagement />} />
       <Route path="departments" element={<DepartmentManagement />} />
       <Route path="food-requests" element={<FoodRequestManagement />} /> 

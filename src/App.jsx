@@ -38,6 +38,7 @@ import Settings from './components/admin/Settings';
 
 import ForgotPassword from './components/admin/ForgotPassword';
 import ResetPassword from './components/admin/ResetPassword';
+import HolidayManagement from './components/admin/HolidayManagement';
 
 
 function App() {
@@ -146,6 +147,7 @@ function App() {
               <Route path="columns" element={<ColumnManagement />} />
               <Route path="tasks" element={<TaskManagement />} />
               <Route path="leaves" element={<LeaveManagement />} />
+              <Route path="holidays" element={<HolidayManagement />} />
               <Route path="comments" element={<CommentManagement />} />
               <Route path="topics" element={<TopicManagement />} />
               <Route path="food-requests" element={<FoodRequestManagement />} />
