@@ -16,7 +16,8 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     lunchTo = '13:00',
     intervals = [],
     fiteredBatch = 'Full Time',
-    isLunchConsider = false
+    isLunchConsider = false,
+    holidays = [] // New parameter for holidays
   } = options;
 
   const timeToMinutes = (timeStr) => {
@@ -77,6 +78,19 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return day.getDay() === 0;
   };
 
+  // New function to check if date is a holiday
+  const isHoliday = (date) => {
+    if (!holidays || holidays.length === 0) return null;
+    
+    const dateStr = new Date(date).toISOString().split('T')[0];
+    const holiday = holidays.find(h => {
+      const holidayDate = new Date(h.date).toISOString().split('T')[0];
+      return holidayDate === dateStr;
+    });
+    
+    return holiday || null;
+  };
+
   const generateDateRange = (fromDate, toDate) => {
     const dates = [];
     const currentDate = new Date(fromDate);
@@ -95,25 +109,22 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     return dates.filter(date => isSunday(date)).length;
   };
 
-  // Calculate working time by summing only IN→OUT intervals with precise time handling
-  const calculateWorkingTime = (punches, workStart, workEnd) => {
-    if (punches.length === 0) return 0;
+  // Enhanced function to calculate working time with detailed breakdown
+  const calculateWorkingTimeDetailed = (punches, workStart, workEnd) => {
+    if (punches.length === 0) return { totalWorkingMinutes: 0, intervals: [], deductions: [] };
 
     let totalWorkingMinutes = 0;
+    let intervalDetails = [];
+    let deductionDetails = [];
 
-    // Debug log to see the structure
-    if (punches.length > 0) {
-      console.log('Sample punch record:', punches[0].record);
-      console.log('Punches with times:', punches.map(p => ({
-        time: p.originalTime,
-        minutes: p.time,
-        status: p.record.status || p.record.presence || p.record.type || 'Unknown'
-      })));
-    }
+    console.log('Calculating detailed working time for punches:', punches.map(p => ({
+      time: p.originalTime,
+      minutes: p.time,
+      status: p.record.status || p.record.presence || p.record.type || 'Unknown'
+    })));
 
-    // Sum all IN→OUT intervals
+    // Process all IN→OUT intervals
     for (let i = 0; i < punches.length - 1; i++) {
-      // Check for status in different possible properties
       let currentStatus = punches[i].record.status ||
         punches[i].record.presence ||
         punches[i].record.type ||
@@ -132,57 +143,64 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         nextStatus = (i + 1) % 2 === 0 ? 'IN' : 'OUT';
       }
 
-      console.log(`Checking interval ${i}: ${currentStatus} (${punches[i].originalTime}) → ${nextStatus} (${punches[i + 1].originalTime})`);
-
       if (currentStatus === 'IN' && nextStatus === 'OUT') {
-        // Get the actual working period within work hours
         let intervalStart = Math.max(punches[i].time, workStart);
         let intervalEnd = Math.min(punches[i + 1].time, workEnd);
 
-        console.log(`Raw interval: ${intervalStart.toFixed(2)} → ${intervalEnd.toFixed(2)} minutes`);
-
-        // Only add if it's a valid working interval
         if (intervalEnd > intervalStart) {
-          let workingInterval = intervalEnd - intervalStart;
-          console.log(`Working interval before deductions: ${workingInterval.toFixed(2)} minutes (${(workingInterval / 60).toFixed(2)} hours)`);
+          let rawWorkingInterval = intervalEnd - intervalStart;
+          let finalWorkingInterval = rawWorkingInterval;
+          let intervalDeductions = [];
 
-          // Deduct lunch time from this interval if not considered as working time
+          // Track lunch deduction for this interval
           if (!isLunchConsider) {
             const lunchStart = timeToMinutes(lunchFrom);
             const lunchEnd = timeToMinutes(lunchTo);
 
-            console.log(`Lunch period: ${lunchStart} → ${lunchEnd} minutes`);
-
-            // Check if this interval overlaps with lunch time
             if (intervalStart < lunchEnd && intervalEnd > lunchStart) {
               const lunchOverlap = Math.min(intervalEnd, lunchEnd) - Math.max(intervalStart, lunchStart);
-              console.log(`Lunch overlap: ${lunchOverlap.toFixed(2)} minutes`);
-              workingInterval -= Math.max(0, lunchOverlap);
+              finalWorkingInterval -= Math.max(0, lunchOverlap);
+              intervalDeductions.push({
+                type: 'Lunch',
+                deductedMinutes: lunchOverlap,
+                reason: 'Lunch break deduction'
+              });
             }
           }
 
-          // Deduct break intervals if not considered as working time
+          // Track break deductions for this interval
           intervals.forEach((interval, idx) => {
             if (!interval.isBreakConsider) {
               const breakStart = timeToMinutes(interval.from);
               const breakEnd = timeToMinutes(interval.to);
 
-              // Check if this working interval overlaps with break time
               if (intervalStart < breakEnd && intervalEnd > breakStart) {
                 const breakOverlap = Math.min(intervalEnd, breakEnd) - Math.max(intervalStart, breakStart);
-                console.log(`Break ${idx} overlap: ${breakOverlap.toFixed(2)} minutes`);
-                workingInterval -= Math.max(0, breakOverlap);
+                finalWorkingInterval -= Math.max(0, breakOverlap);
+                intervalDeductions.push({
+                  type: `Break ${idx + 1}`,
+                  deductedMinutes: breakOverlap,
+                  reason: `Break interval ${interval.from} - ${interval.to}`
+                });
               }
             }
           });
 
-          console.log(`Final working interval: ${workingInterval.toFixed(2)} minutes (${(workingInterval / 60).toFixed(2)} hours)`);
-          totalWorkingMinutes += Math.max(0, workingInterval);
+          intervalDetails.push({
+            intervalNumber: i + 1,
+            inTime: formatTime(punches[i].time),
+            outTime: formatTime(punches[i + 1].time),
+            rawMinutes: rawWorkingInterval,
+            finalMinutes: Math.max(0, finalWorkingInterval),
+            deductions: intervalDeductions,
+            totalDeducted: rawWorkingInterval - Math.max(0, finalWorkingInterval)
+          });
+
+          deductionDetails.push(...intervalDeductions);
+          totalWorkingMinutes += Math.max(0, finalWorkingInterval);
         }
       }
     }
-
-    console.log(`Total working minutes before overtime check: ${totalWorkingMinutes.toFixed(2)}`);
 
     // Handle overtime consideration
     if (!considerOvertime) {
@@ -201,33 +219,71 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         }
       });
 
-      console.log(`Expected work time: ${expectedWorkTime.toFixed(2)} minutes`);
-      totalWorkingMinutes = Math.min(totalWorkingMinutes, expectedWorkTime);
+      if (totalWorkingMinutes > expectedWorkTime) {
+        const overtimeMinutes = totalWorkingMinutes - expectedWorkTime;
+        deductionDetails.push({
+          type: 'Overtime Exclusion',
+          deductedMinutes: overtimeMinutes,
+          reason: 'Overtime not considered in calculations'
+        });
+        totalWorkingMinutes = expectedWorkTime;
+      }
     }
 
-    console.log(`Final total working minutes: ${totalWorkingMinutes.toFixed(2)} (${(totalWorkingMinutes / 60).toFixed(2)} hours)`);
-    return Math.max(0, totalWorkingMinutes);
+    return {
+      totalWorkingMinutes: Math.max(0, totalWorkingMinutes),
+      intervals: intervalDetails,
+      deductions: deductionDetails
+    };
   };
 
-  // Calculate permission/penalty time
-  const calculatePermissionTime = (punches, workStart, workEnd) => {
-    if (punches.length === 0) return 0;
+  // Enhanced permission time calculation with detailed breakdown
+  const calculatePermissionTimeDetailed = (punches, workStart, workEnd) => {
+    if (punches.length === 0) return { totalPermissionMinutes: 0, details: [] };
 
     const firstPunch = punches[0];
     const lastPunch = punches[punches.length - 1];
-    let permissionTime = 0;
+    let permissionDetails = [];
+    let totalPermissionMinutes = 0;
 
     // Late arrival
     if (firstPunch.time > workStart) {
-      permissionTime += (firstPunch.time - workStart);
+      const lateMinutes = firstPunch.time - workStart;
+      const permissionUsed = Math.min(lateMinutes, permissionTimeMinutes);
+      const excessMinutes = Math.max(0, lateMinutes - permissionTimeMinutes);
+      
+      permissionDetails.push({
+        type: 'Late Arrival',
+        totalMinutes: lateMinutes,
+        permissionUsed: permissionUsed,
+        excessMinutes: excessMinutes,
+        description: `Arrived ${Math.round(lateMinutes)} minutes late`
+      });
+      
+      totalPermissionMinutes += lateMinutes;
     }
 
     // Early departure (only if there's an OUT punch)
     if (punches.length > 1 && lastPunch.time < workEnd) {
-      permissionTime += (workEnd - lastPunch.time);
+      const earlyMinutes = workEnd - lastPunch.time;
+      const permissionUsed = Math.min(earlyMinutes, permissionTimeMinutes);
+      const excessMinutes = Math.max(0, earlyMinutes - permissionTimeMinutes);
+      
+      permissionDetails.push({
+        type: 'Early Departure',
+        totalMinutes: earlyMinutes,
+        permissionUsed: permissionUsed,
+        excessMinutes: excessMinutes,
+        description: `Left ${Math.round(earlyMinutes)} minutes early`
+      });
+      
+      totalPermissionMinutes += earlyMinutes;
     }
 
-    return permissionTime;
+    return {
+      totalPermissionMinutes,
+      details: permissionDetails
+    };
   };
 
   const isSingleDay = new Date(fromDate).toDateString() === new Date(toDate).toDateString();
@@ -274,7 +330,12 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   const allDates = generateDateRange(fromDate, toDate);
   const totalDaysInPeriod = allDates.length;
   const totalSundaysInPeriod = countSundaysInRange(fromDate, toDate);
-  const totalWorkingDaysInPeriod = totalDaysInPeriod - totalSundaysInPeriod;
+  
+  // Count total holidays in the period
+  const totalHolidaysInPeriod = allDates.filter(date => isHoliday(date)).length;
+  
+  // Calculate working days excluding Sundays and holidays
+  const totalWorkingDaysInPeriod = totalDaysInPeriod - totalSundaysInPeriod - totalHolidaysInPeriod;
 
   const perDaySalary = totalWorkingDaysInPeriod > 0 ? originalSalary / totalWorkingDaysInPeriod : 0;
   const perMinuteSalary = standardWorkingMinutes > 0 ? perDaySalary / standardWorkingMinutes : 0;
@@ -287,6 +348,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
   let report = [];
   let totalAbsentDays = 0;
   let totalSundayCount = 0;
+  let totalHolidayCount = 0;
 
   const groupedByDate = {};
   filteredData.forEach(record => {
@@ -302,62 +364,75 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       workingMinutes: 0,
       permissionMinutes: 0,
       salaryDeduction: 0,
-      issues: []
+      issues: [],
+      detailedBreakdown: {
+        intervals: [],
+        deductions: [],
+        permissionDetails: []
+      }
     };
 
     const firstPunch = punches[0];
     const lastPunch = punches[punches.length - 1];
 
-    // Calculate actual working time
-    const workingTime = calculateWorkingTime(punches, workStart, workEnd);
-    const permissionTime = calculatePermissionTime(punches, workStart, workEnd);
+    // Calculate detailed working time and permission time
+    const workingTimeResult = calculateWorkingTimeDetailed(punches, workStart, workEnd);
+    const permissionTimeResult = calculatePermissionTimeDetailed(punches, workStart, workEnd);
 
-    const adjustedWorkingTime = Math.max(0, workingTime - permissionTime);
+    const adjustedWorkingTime = Math.max(0, workingTimeResult.totalWorkingMinutes - permissionTimeResult.totalPermissionMinutes);
 
-    // Generate issues/remarks
-    if (firstPunch.time > workStart) {
-      const lateMinutes = firstPunch.time - workStart;
-      if (lateMinutes <= permissionTimeMinutes) {
-        dayData.issues.push(`Late arrival: ${Math.round(lateMinutes)} minutes (within permission)`);
+    // Store detailed breakdown
+    dayData.detailedBreakdown = {
+      intervals: workingTimeResult.intervals,
+      deductions: workingTimeResult.deductions,
+      permissionDetails: permissionTimeResult.details
+    };
+
+    // Generate issues/remarks with detailed information
+    permissionTimeResult.details.forEach(detail => {
+      if (detail.totalMinutes <= permissionTimeMinutes) {
+        dayData.issues.push(`${detail.type}: ${Math.round(detail.totalMinutes)} minutes (within permission)`);
       } else {
         punctualityViolations++;
-        dayData.issues.push(`Late arrival: ${Math.round(lateMinutes)} minutes (${permissionTimeMinutes} permission + ${Math.round(lateMinutes - permissionTimeMinutes)} excess)`);
+        dayData.issues.push(`${detail.type}: ${Math.round(detail.totalMinutes)} minutes (${permissionTimeMinutes} permission + ${Math.round(detail.excessMinutes)} excess)`);
       }
-    }
-
-    if (lastPunch.time < workEnd && punches.length > 1) {
-      const earlyMinutes = workEnd - lastPunch.time;
-      if (earlyMinutes > permissionTimeMinutes) {
-        const excessEarlyMinutes = earlyMinutes - permissionTimeMinutes;
-        dayData.issues.push(`Early departure: ${Math.round(earlyMinutes)} minutes (${permissionTimeMinutes} permission + ${Math.round(excessEarlyMinutes)} excess)`);
-      } else {
-        dayData.issues.push(`Early departure: ${Math.round(earlyMinutes)} minutes (within permission)`);
-      }
-    }
+    });
 
     dayData.workingMinutes = adjustedWorkingTime;
-    dayData.permissionMinutes = permissionTime;
-    dayData.salaryDeduction = permissionTime * perMinuteSalary;
+    dayData.permissionMinutes = permissionTimeResult.totalPermissionMinutes;
+    dayData.salaryDeduction = permissionTimeResult.totalPermissionMinutes * perMinuteSalary;
 
+    // Create detailed report entry
     const reportEntry = {
       date: formatDate(date),
       inTime: formatTime(firstPunch.time),
       outTime: punches.length > 1 ? formatTime(lastPunch.time) : '-',
-      workedHours: (adjustedWorkingTime / 60).toFixed(2) + ' hrs',   // ✅ use adjusted time
-      permissionMins: Math.round(permissionTime),
+      workedHours: (adjustedWorkingTime / 60).toFixed(2) + ' hrs',
+      permissionMins: Math.round(permissionTimeResult.totalPermissionMinutes),
       deduction: formatCurrency(dayData.salaryDeduction),
-      status: 'Present'
+      status: 'Present',
+      // Enhanced detailed breakdown
+      intervalBreakdown: workingTimeResult.intervals.map(interval => 
+        `${interval.inTime} → ${interval.outTime}: ${(interval.finalMinutes / 60).toFixed(2)}h (Raw: ${(interval.rawMinutes / 60).toFixed(2)}h)`
+      ).join(' | '),
+      deductionBreakdown: [
+        ...workingTimeResult.deductions.map(d => `${d.type}: ${Math.round(d.deductedMinutes)}m`),
+        ...permissionTimeResult.details.map(d => `${d.type}: ${Math.round(d.totalMinutes)}m`)
+      ].join(' | '),
+      totalRawWorkingTime: (workingTimeResult.intervals.reduce((sum, interval) => sum + interval.rawMinutes, 0) / 60).toFixed(2) + ' hrs',
+      totalDeductedTime: Math.round(workingTimeResult.intervals.reduce((sum, interval) => sum + interval.totalDeducted, 0) + permissionTimeResult.totalPermissionMinutes) + ' mins'
     };
 
     report.push(reportEntry);
     totalWorkingMinutes += dayData.workingMinutes;
-    totalPermissionMinutes += permissionTime;
+    totalPermissionMinutes += permissionTimeResult.totalPermissionMinutes;
     dailyBreakdown.push(dayData);
   };
 
   const processMissedDay = (date) => {
     const dateString = date.toISOString().split('T')[0];
     const isSundayDay = isSunday(date);
+    const holidayInfo = isHoliday(date);
 
     if (isSundayDay) {
       totalSundayCount++;
@@ -367,7 +442,8 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         workingMinutes: 0,
         permissionMinutes: 0,
         salaryDeduction: 0,
-        issues: ['Sunday - Weekly off']
+        issues: ['Sunday - Weekly off'],
+        detailedBreakdown: { intervals: [], deductions: [], permissionDetails: [] }
       };
 
       const reportEntry = {
@@ -377,12 +453,46 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         workedHours: '-',
         permissionMins: '-',
         deduction: '-',
-        status: 'Sunday'
+        status: 'Sunday',
+        intervalBreakdown: '-',
+        deductionBreakdown: '-',
+        totalRawWorkingTime: '-',
+        totalDeductedTime: '-'
+      };
+
+      report.push(reportEntry);
+      dailyBreakdown.push(dayData);
+    } else if (holidayInfo) {
+      // Handle holidays - no salary deduction
+      totalHolidayCount++;
+      const dayData = {
+        date: dateString,
+        punchTime: '-',
+        workingMinutes: 0,
+        permissionMinutes: 0,
+        salaryDeduction: 0, // No deduction for holidays
+        issues: [`Holiday - ${holidayInfo.name || 'Public Holiday'}`],
+        detailedBreakdown: { intervals: [], deductions: [], permissionDetails: [] }
+      };
+
+      const reportEntry = {
+        date: formatDate(dateString),
+        inTime: '-',
+        outTime: '-',
+        workedHours: '-',
+        permissionMins: '-',
+        deduction: '-', // No deduction
+        status: `Holiday`,
+        intervalBreakdown: '-',
+        deductionBreakdown: '-',
+        totalRawWorkingTime: '-',
+        totalDeductedTime: '-'
       };
 
       report.push(reportEntry);
       dailyBreakdown.push(dayData);
     } else {
+      // Regular absent day
       totalAbsentDays++;
       const dayData = {
         date: dateString,
@@ -390,7 +500,8 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         workingMinutes: 0,
         permissionMinutes: 0,
         salaryDeduction: perDaySalary,
-        issues: ['Absent - Full day salary deducted']
+        issues: ['Absent - Full day salary deducted'],
+        detailedBreakdown: { intervals: [], deductions: [], permissionDetails: [] }
       };
 
       const reportEntry = {
@@ -400,7 +511,11 @@ export const calculateWorkerProductivity = (productivityParameters) => {
         workedHours: '0 hrs',
         permissionMins: 0,
         deduction: formatCurrency(perDaySalary),
-        status: 'Absent'
+        status: 'Absent',
+        intervalBreakdown: 'Full day absent',
+        deductionBreakdown: `Full day deduction: ${formatCurrency(perDaySalary)}`,
+        totalRawWorkingTime: '0 hrs',
+        totalDeductedTime: `${Math.round(standardWorkingMinutes)} mins (full day)`
       };
 
       report.push(reportEntry);
@@ -445,6 +560,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     "Total Days in Period": totalDaysInPeriod,
     "Total Working Days": totalWorkingDaysInPeriod,
     "Total Sundays": totalSundaysInPeriod,
+    "Total Holidays": totalHolidayCount,
     "Total Absent Days": totalAbsentDays,
     "Actual Working Days": actualWorkingDays,
     "Total Working Hours": `${(totalWorkingMinutes / 60).toFixed(2)} hours`,
@@ -467,6 +583,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
     totalSalaryDeduction,
     totalAbsentDays,
     totalSundayCount: totalSundaysInPeriod,
+    totalHolidayCount,
     productivityPercentage,
     dailyBreakdown: dailyBreakdown.map(day => ({
       ...day,
@@ -489,6 +606,7 @@ export const calculateWorkerProductivity = (productivityParameters) => {
       totalWorkingDaysInPeriod,
       totalDaysInPeriod,
       totalSundaysInPeriod,
+      totalHolidaysInPeriod,
       totalAbsentDays,
       actualWorkingDays,
       absentDeduction: totalAbsentDeduction,
@@ -528,6 +646,7 @@ function emptyResponse() {
     totalSalaryDeduction: 0,
     totalAbsentDays: 0,
     totalSundayCount: 0,
+    totalHolidayCount: 0,
     productivityPercentage: 0,
     dailyBreakdown: [],
     summary: {
@@ -539,6 +658,7 @@ function emptyResponse() {
       totalWorkingDaysInPeriod: 0,
       totalDaysInPeriod: 0,
       totalSundaysInPeriod: 0,
+      totalHolidaysInPeriod: 0,
       totalAbsentDays: 0,
       actualWorkingDays: 0,
       absentDeduction: 0,
@@ -557,14 +677,15 @@ function emptyResponse() {
       "Total Days in Period": 0,
       "Total Working Days": 0,
       "Total Sundays": 0,
+      "Total Holidays": 0,
       "Total Absent Days": 0,
       "Actual Working Days": 0,
       "Total Working Hours": "0 hours",
       "Total Permission Time": "0 minutes",
       "Absent Deduction": "₹0.00",
-      "Attendance Rate": "0%",
       "Permission Deduction": "₹0.00",
       "Total Salary Deductions": "₹0.00",
+      "Attendance Rate": "0%",
       "Final Salary": "₹0.00"
     },
     report: []

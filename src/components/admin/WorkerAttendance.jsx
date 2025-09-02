@@ -13,6 +13,7 @@ import ProductivityDisplay from './ProductivityDisplay';
 import api from '../../hooks/useAxios';
 import { getAuthToken } from '../../utils/authUtils';
 import jsPDF from 'jspdf';
+import { getHolidaysByDateRange } from '../../services/holidayService';
 
 const WorkerAttendance = () => {
     const { id } = useParams();
@@ -301,57 +302,62 @@ const WorkerAttendance = () => {
 
     // Replace the productivity calculation section in your useEffect:
     useEffect(() => {
-        let filtered = attendanceData;
+        const calculateProductivity = async () => {
+            let filtered = attendanceData;
 
-        // Filter by date range
-        if (fromDate || toDate) {
-            filtered = filtered.filter(item => {
-                if (!item.date) return false;
-
-                const itemDate = item.date.split('T')[0];
-
-                if (fromDate && toDate) {
-                    return itemDate >= fromDate && itemDate <= toDate;
-                }
-                else if (fromDate) {
-                    return itemDate >= fromDate;
-                }
-                else if (toDate) {
-                    return itemDate <= toDate;
-                }
-
-                return true;
-            });
-        }
-
-        setFilteredByDateData(filtered);
-
-        // Calculate productivity for the filtered date range
-        if (fromDate && toDate && settingsData) {
-            const productivityParameters = {
-                attendanceData,
-                fromDate,
-                toDate,
-                options: {
-                    considerOvertime: settingsData.considerOvertime,
-                    deductSalary: settingsData.deductSalary,
-                    permissionTimeMinutes: settingsData.permissionTimeMinutes,
-                    salaryDeductionPerBreak: settingsData.salaryDeductionPerBreak,
-                    batches: settingsData.batches,
-                    lunchFrom: settingsData.lunchFrom,
-                    lunchTo: settingsData.lunchTo,
-                    isLunchConsider: settingsData.isLunchConsider,
-                    intervals: settingsData.intervals,
-                    fiteredBatch: fiteredBatch
-                }
+            // Filter by date range
+            if (fromDate || toDate) {
+                filtered = filtered.filter(item => {
+                    if (!item.date) return false;
+                    const itemDate = item.date.split('T')[0];
+                    if (fromDate && toDate) return itemDate >= fromDate && itemDate <= toDate;
+                    else if (fromDate) return itemDate >= fromDate;
+                    else if (toDate) return itemDate <= toDate;
+                    return true;
+                });
             }
 
-            const productivity = calculateWorkerProductivity(productivityParameters);
-            setProductivityData(productivity);
-        } else {
-            setProductivityData(null);
-        }
-    }, [fromDate, toDate, attendanceData, settingsData, fiteredBatch]);
+            setFilteredByDateData(filtered);
+
+            if (fromDate && toDate && settingsData) {
+                try {
+                    // ✅ Await holidays data
+                    const holidaysData = await getHolidaysByDateRange(subdomain, fromDate, toDate);
+
+                    console.log("Holidays Data:", holidaysData);
+
+                    const productivityParameters = {
+                        attendanceData: filtered,
+                        fromDate,
+                        toDate,
+                        options: {
+                            considerOvertime: settingsData.considerOvertime,
+                            deductSalary: settingsData.deductSalary,
+                            permissionTimeMinutes: settingsData.permissionTimeMinutes,
+                            salaryDeductionPerBreak: settingsData.salaryDeductionPerBreak,
+                            batches: settingsData.batches,
+                            lunchFrom: settingsData.lunchFrom,
+                            lunchTo: settingsData.lunchTo,
+                            isLunchConsider: settingsData.isLunchConsider,
+                            intervals: settingsData.intervals,
+                            fiteredBatch: fiteredBatch,
+                            holidays: holidaysData || []  // ✅ pass holidays into calculator
+                        }
+                    };
+
+                    const productivity = calculateWorkerProductivity(productivityParameters);
+                    setProductivityData(productivity);
+                } catch (err) {
+                    console.error("Failed to fetch holidays:", err);
+                    toast.error("Could not fetch holidays data.");
+                }
+            } else {
+                setProductivityData(null);
+            }
+        };
+
+        calculateProductivity();
+    }, [fromDate, toDate, attendanceData, settingsData, fiteredBatch, subdomain]);
 
     const handleReset = () => {
         setFilteredByDateData(attendanceData);
