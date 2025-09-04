@@ -97,6 +97,9 @@ const WorkerAttendance = () => {
         }
     }, [fiteredBatch, settingsData?.batches]);
 
+    // Updated downloadPDF function in WorkerAttendance.jsx
+    // Replace the existing downloadPDF function with this updated version
+
     const downloadPDF = async (productivityData) => {
         setIsGenerating(true);
 
@@ -124,6 +127,8 @@ const WorkerAttendance = () => {
             const secondaryColor = [100, 100, 100];
             const header = [234, 241, 250];
             const salaryColor = [37, 99, 235];
+            const delayColor = [220, 38, 127]; // Pink for delays
+            const normalColor = [34, 197, 94]; // Green for normal entries
 
             // Header
             doc.setFillColor(...header);
@@ -131,7 +136,7 @@ const WorkerAttendance = () => {
             doc.setTextColor(37, 99, 235);
             doc.setFontSize(20);
             doc.setFont('helvetica', 'bold');
-            doc.text('Employee Productivity Report', 20, 20);
+            doc.text('Employee Detailed Attendance Report', 20, 20);
 
             // Worker Information
             let currentY = 40;
@@ -151,7 +156,7 @@ const WorkerAttendance = () => {
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
-            doc.text('Final Summary', 20, currentY);
+            doc.text('Summary', 20, currentY);
             doc.setFont('helvetica', 'normal');
             currentY += 10;
 
@@ -191,22 +196,29 @@ const WorkerAttendance = () => {
 
             currentY += (summaryData.length * 6) + 30;
 
+            // Check if we need a new page
+            if (currentY > 200) {
+                doc.addPage();
+                currentY = 20;
+            }
+
             // Detailed Report Section
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
-            doc.text('Detailed Daily Attendance Report', 20, currentY);
+            doc.text('Detailed Daily Delay Report', 20, currentY);
             currentY += 15;
 
-            // Table headers
+            // Table headers for detailed delay report
             doc.setFillColor(240, 240, 240);
             doc.rect(20, currentY - 5, 170, 10, 'F');
-            doc.setFontSize(10);
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...primaryColor);
 
-            const headers = ['Date', 'In Time', 'Out Time', 'Worked Hours', 'Permission (mins)', 'Deduction'];
-            const headerPositions = [22, 45, 75, 105, 132, 165];
+            // Headers: Date - Out Time - In Time - Delay Time - Deduction Amount
+            const headers = ['Date', 'Out Time', 'In Time', 'Delay Time', 'Type', 'Deduction'];
+            const headerPositions = [22, 50, 75, 100, 125, 160];
 
             headers.forEach((header, index) => {
                 doc.text(header, headerPositions[index], currentY);
@@ -216,15 +228,34 @@ const WorkerAttendance = () => {
             doc.line(20, currentY, 190, currentY);
             currentY += 10;
 
-            // Table data - Use the calculated report data from productivityData
+            // Detailed table data
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...secondaryColor);
-            doc.setFontSize(9);
+            doc.setFontSize(8);
 
-            productivityData.report.forEach((record, index) => {
+            // Group and sort report by date for better readability
+            const sortedReport = [...productivityData.report].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            sortedReport.forEach((record, index) => {
                 if (currentY > 270) {
                     doc.addPage();
                     currentY = 20;
+
+                    // Repeat headers on new page
+                    doc.setFillColor(240, 240, 240);
+                    doc.rect(20, currentY - 5, 170, 10, 'F');
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...primaryColor);
+
+                    headers.forEach((header, index) => {
+                        doc.text(header, headerPositions[index], currentY);
+                    });
+
+                    currentY += 5;
+                    doc.line(20, currentY, 190, currentY);
+                    currentY += 10;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
                 }
 
                 // Alternate row colors
@@ -233,23 +264,66 @@ const WorkerAttendance = () => {
                     doc.rect(20, currentY - 3, 170, 8, 'F');
                 }
 
-                // Clean and format the deduction value to remove superscript 1
+                // Set text color based on record type
+                if (record.status === 'Delay' && record.delayTime !== '0 mins') {
+                    doc.setTextColor(...delayColor); // Pink for delays
+                } else if (record.status === 'Present') {
+                    doc.setTextColor(...normalColor); // Green for normal attendance
+                } else {
+                    doc.setTextColor(...secondaryColor); // Gray for other statuses
+                }
+
+                // Format deduction value
                 let deductionValue = '-';
-                if (record.deduction) {
-                    // Remove any superscript 1 and other unwanted characters, then format properly
-                    const numericValue = extractNumericValue(record.deduction);
+                if (record.deductionAmount && record.deductionAmount !== '-') {
+                    const numericValue = extractNumericValue(record.deductionAmount);
                     deductionValue = `Rs. ${numericValue.toFixed(2)}`;
                 }
 
+                // Truncate long delay types for better fit
+                let delayType = record.delayType || '-';
+                if (delayType.length > 12) {
+                    delayType = delayType.substring(0, 12) + '...';
+                }
+
+                // Data columns: Date - Out Time - In Time - Delay Time - Type - Deduction Amount
                 doc.text(record.date || '-', 22, currentY);
-                doc.text(record.inTime || '-', 45, currentY);
-                doc.text(record.outTime || '-', 75, currentY);
-                doc.text(record.workedHours || '-', 105, currentY);
-                doc.text(record.permissionMins?.toString() || '-', 140, currentY);
-                doc.text(deductionValue, 165, currentY);
+                doc.text(record.outTime || '-', 50, currentY);
+                doc.text(record.inTime || '-', 75, currentY);
+                doc.text(record.delayTime || '0 mins', 100, currentY);
+                doc.text(delayType, 125, currentY);
+                doc.text(deductionValue, 160, currentY);
 
                 currentY += 8;
             });
+
+            // Add legend
+            currentY += 15;
+            if (currentY > 260) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(...primaryColor);
+            doc.text('Legend:', 20, currentY);
+            currentY += 8;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+
+            // Legend items
+            doc.setTextColor(...delayColor);
+            doc.text('● Delay entries (Late arrival, Break delays, Early departure)', 22, currentY);
+            currentY += 6;
+
+            doc.setTextColor(...normalColor);
+            doc.text('● Normal attendance (No delays)', 22, currentY);
+            currentY += 6;
+
+            doc.setTextColor(...secondaryColor);
+            doc.text('● Special days (Sundays, Holidays, Absences)', 22, currentY);
 
             // Footer
             const pageCount = doc.internal.getNumberOfPages();
@@ -261,11 +335,11 @@ const WorkerAttendance = () => {
                 doc.text(`Page ${i} of ${pageCount}`, 170, 285);
             }
 
-            // Save PDF
-            const fileName = `productivity_report_${new Date().toISOString().split('T')[0]}.pdf`;
+            // Save PDF with descriptive filename
+            const fileName = `detailed_attendance_report_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
 
-            toast.success('PDF generated successfully!');
+            toast.success('Detailed PDF report generated successfully!');
         } catch (error) {
             console.error('Error generating PDF:', error);
             toast.error('Error generating PDF. Please try again.');
