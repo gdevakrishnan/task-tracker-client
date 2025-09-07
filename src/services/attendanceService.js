@@ -1,4 +1,4 @@
-import api from '../hooks/useAxios';
+import api from './api';
 import { getAuthToken } from '../utils/authUtils';
 
 export const putAttendance = async (attendanceData) => {

@@ -146,9 +146,9 @@ const WorkerAttendance = () => {
 
             if (productivityData.summary?.worker) {
                 const worker = productivityData.summary.worker;
-                doc.text(`Employee: ${worker.name || 'N/A'}`, 20, currentY);
-                doc.text(`Employee ID: ${worker.rfid || 'N/A'}`, 20, currentY + 8);
-                doc.text(`Email: ${worker.email || 'N/A'}`, 20, currentY + 16);
+                doc.text(`Employee: ${worker.name || 'Unknown Worker'}`, 20, currentY);
+                doc.text(`Employee ID: ${worker.rfid || 'No ID'}`, 20, currentY + 8);
+                doc.text(`Email: ${worker.email || 'No Email'}`, 20, currentY + 16);
                 currentY += 30;
             }
 

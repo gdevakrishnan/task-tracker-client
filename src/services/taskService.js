@@ -1,14 +1,10 @@
-import api from '../hooks/useAxios';
-import { getAuthToken } from '../utils/authUtils';
+import api from './api';
 
 // Create new task
 export const createTask = async (taskData) => {
   console.log(taskData);
   try {
-    const token = localStorage.getItem('token');
-    const response = await api.post('/tasks', taskData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.post('/tasks', taskData);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to create task');
@@ -18,10 +14,7 @@ export const createTask = async (taskData) => {
 // Get all tasks (admin)
 export const getAllTasks = async (subdomain) => {
   try {
-    const token = getAuthToken();
-    const response = await api.post('/tasks/all', subdomain, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.post('/tasks/all', subdomain);
     console.log('Tasks API Response:', response.data);
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -33,10 +26,7 @@ export const getAllTasks = async (subdomain) => {
 // Get my tasks (worker)
 export const getMyTasks = async () => {
   try {
-    const token = getAuthToken();
-    const response = await api.get('/tasks/me', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get('/tasks/me');
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to fetch tasks');
@@ -56,10 +46,7 @@ export const getTasksByDateRange = async (startDate, endDate) => {
 // Reset all tasks (admin)
 export const resetAllTasks = async (taskData) => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await api.delete(`/tasks/reset/${taskData.subdomain}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const response = await api.delete(`/tasks/reset/${taskData.subdomain}`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to reset tasks');
@@ -69,10 +56,7 @@ export const resetAllTasks = async (taskData) => {
 
 export const submitCustomTask = async (customTaskData) => {
   try {
-    const token = getAuthToken();
-    const response = await api.post('/tasks/custom', customTaskData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.post('/tasks/custom', customTaskData);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to submit custom task');
@@ -81,10 +65,7 @@ export const submitCustomTask = async (customTaskData) => {
 
 export const getCustomTask = async (taskData) => {
   try {
-    const token = getAuthToken();
-    const response = await api.get(`/tasks/custom/${taskData.subdomain}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get(`/tasks/custom/${taskData.subdomain}`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Could not fetch custom task');
@@ -93,11 +74,7 @@ export const getCustomTask = async (taskData) => {
 
 export const approveCustomTask = async (taskId, points = 1) => {
   try {
-    const token = getAuthToken();
-    const response = await api.put(`/tasks/${taskId}/approve`,
-      { points },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await api.put(`/tasks/${taskId}/approve`, { points });
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to approve task');

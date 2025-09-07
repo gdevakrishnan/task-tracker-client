@@ -1,5 +1,4 @@
-import api from '../hooks/useAxios';
-import { getAuthToken } from '../utils/authUtils';
+import api from './api';
 
 export const getAllLeaves = async (leaveData) => {
   try {
@@ -7,10 +6,7 @@ export const getAllLeaves = async (leaveData) => {
       throw new Error('Subdomain is missing check the URL');
     }
 
-    const token = getAuthToken();
-    const response = await api.get(`/leaves/${leaveData.subdomain}/0`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get(`/leaves/${leaveData.subdomain}/0`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to fetch leaves');
@@ -19,12 +15,8 @@ export const getAllLeaves = async (leaveData) => {
 
 export const getMyLeaves = async (leaveData) => {
   try {
-    const token = getAuthToken(); // Add this line to get the token
-    const response = await api.get(`/leaves/${leaveData.subdomain}/1`, {
-      headers: { Authorization: `Bearer ${token}` } // Add authorization header
-    });
+    const response = await api.get(`/leaves/${leaveData.subdomain}/1`);
     console.log('Leaves Service Response:', response.data);
-
 
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -36,8 +28,6 @@ export const getMyLeaves = async (leaveData) => {
 // Create leave
 export const createLeave = async (leaveData) => {
   try {
-    const token = getAuthToken();
-
     // Validation
     if (!leaveData.subdomain || leaveData.subdomain == 'main') {
       throw new Error('Subdomain is missing check the URL');
@@ -66,8 +56,7 @@ export const createLeave = async (leaveData) => {
 
     const response = await api.post('/leaves', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'multipart/form-data'
       }
     });
 
@@ -81,10 +70,7 @@ export const createLeave = async (leaveData) => {
 // Update leave status (admin)
 export const updateLeaveStatus = async (leaveId, status, leaveData) => {
   try {
-    const token = getAuthToken();
-    const response = await api.put(`/leaves/${leaveId}/status`, { status, leaveData }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.put(`/leaves/${leaveId}/status`, { status, leaveData });
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to update leave status');
@@ -94,10 +80,7 @@ export const updateLeaveStatus = async (leaveId, status, leaveData) => {
 // Mark leave as viewed (worker)
 export const markLeaveAsViewed = async (leaveId) => {
   try {
-    const token = getAuthToken();
-    const response = await api.put(`/leaves/${leaveId}/viewed`, null, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.put(`/leaves/${leaveId}/viewed`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to mark leave as viewed');
@@ -116,10 +99,7 @@ export const getLeavesByDateRange = async (startDate, endDate) => {
 
 export const getLeavesByStatus = async (status) => {
   try {
-    const token = getAuthToken();
-    const response = await api.get(`/leaves/status?status=${status}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.get(`/leaves/status?status=${status}`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to fetch leaves');
@@ -128,10 +108,7 @@ export const getLeavesByStatus = async (status) => {
 
 export const markLeavesAsViewedByAdmin = async () => {
   try {
-    const token = getAuthToken();
-    await api.put('/leaves/mark-viewed-by-admin', null, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    await api.put('/leaves/mark-viewed-by-admin');
   } catch (error) {
     console.error('Failed to mark leaves as viewed:', error);
   }

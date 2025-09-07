@@ -59,9 +59,10 @@ const LeaveManagement = () => {
     setProcessing(prev => ({ ...prev, [leaveId]: true }));
 
     try {
-      await updateLeaveStatus(leaveId, status, leaveData);
+      const updatedLeave = await updateLeaveStatus(leaveId, status, leaveData);
+      // Update the local state with the response that includes populated worker data
       setLeaves(leaves.map(leave =>
-        leave._id === leaveId ? { ...leave, status } : leave
+        leave._id === leaveId ? { ...leave, status, worker: updatedLeave.worker || leave.worker } : leave
       ));
       await markLeavesAsViewedByAdmin(leaveId);
       toast.success(`Leave ${status.toLowerCase()} successfully`);

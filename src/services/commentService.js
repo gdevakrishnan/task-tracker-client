@@ -1,5 +1,5 @@
-import api from '../hooks/useAxios';
-import { getAuthToken } from '../utils/authUtils';
+import api from './api';
+
 // Get all comments (admin)
 export const getAllComments = async (commentData) => {
   try {
@@ -7,10 +7,7 @@ export const getAllComments = async (commentData) => {
       throw new Error ('Subdomain is missing, check the URL');
     }
 
-    const token = getAuthToken();
-    const response = await api.get(`/comments/${commentData.subdomain}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get(`/comments/${commentData.subdomain}`);
     console.log('Comments response:', response.data);
     return response.data;
   } catch (error) {
@@ -18,13 +15,11 @@ export const getAllComments = async (commentData) => {
     throw error.response ? error.response.data : new Error('Failed to fetch comments');
   }
 };
+
 // Get my comments (worker)
 export const getMyComments = async () => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await api.get('/comments/me', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get('/comments/me');
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to fetch comments');
@@ -44,15 +39,7 @@ export const getWorkerComments = async (workerId) => {
 // Create comment
 export const createComment = async (commentData) => {
   try {
-    const token = localStorage.getItem('token');
-    
-    const response = await api.post('/comments', commentData, {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
+    const response = await api.post('/comments', commentData);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to create comment');
@@ -62,10 +49,7 @@ export const createComment = async (commentData) => {
 // Add reply to comment
 export const addReply = async (commentId, replyData) => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await api.post(`/comments/${commentId}/replies`, replyData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.post(`/comments/${commentId}/replies`, replyData);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to add reply');
@@ -84,10 +68,7 @@ export const markCommentAsRead = async (commentId) => {
 
 export const getUnreadAdminReplies = async () => {
   try {
-    const token = getAuthToken();
-    const response = await api.get('/comments/unread-admin-replies', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await api.get('/comments/unread-admin-replies');
     return response.data;
   } catch (error) {
     console.error('Failed to fetch unread admin replies:', error);
@@ -97,10 +78,7 @@ export const getUnreadAdminReplies = async () => {
 
 export const markAdminRepliesAsRead = async () => {
   try {
-    const token = getAuthToken();
-    await api.put('/comments/mark-admin-replies-read', null, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    await api.put('/comments/mark-admin-replies-read');
   } catch (error) {
     console.error('Failed to mark admin replies as read:', error);
   }

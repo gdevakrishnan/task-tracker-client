@@ -43,10 +43,34 @@ const AdminFoodRequest = () => {
           getFoodRequestSettings({ subdomain })
         ]);
         setWorkers(workersData);
-        setSettings(settingsData);
+        
+        console.log('🔍 AdminFoodRequest - Settings data received:', settingsData);
+        
+        // Ensure settings has default values for all meal types
+        const defaultSettings = {
+          breakfast: { enabled: false, openTime: '07:00', closeTime: '09:00', autoSwitch: false },
+          lunch: { enabled: true, openTime: '12:00', closeTime: '14:00', autoSwitch: false },
+          dinner: { enabled: false, openTime: '18:00', closeTime: '20:00', autoSwitch: false }
+        };
+        
+        // Merge fetched settings with defaults to ensure all properties exist
+        const safeSettings = {
+          breakfast: { ...defaultSettings.breakfast, ...(settingsData?.breakfast || {}) },
+          lunch: { ...defaultSettings.lunch, ...(settingsData?.lunch || {}) },
+          dinner: { ...defaultSettings.dinner, ...(settingsData?.dinner || {}) }
+        };
+        
+        setSettings(safeSettings);
       } catch (error) {
         toast.error('Failed to load data.');
         console.error('Failed to fetch initial data:', error);
+        
+        // Set default settings on error to prevent crashes
+        setSettings({
+          breakfast: { enabled: false, openTime: '07:00', closeTime: '09:00', autoSwitch: false },
+          lunch: { enabled: true, openTime: '12:00', closeTime: '14:00', autoSwitch: false },
+          dinner: { enabled: false, openTime: '18:00', closeTime: '20:00', autoSwitch: false }
+        });
       } finally {
         setLoadingWorkers(false);
       }
@@ -119,6 +143,12 @@ const AdminFoodRequest = () => {
     if (!settings) return { status: 'loading', label: 'Loading...' };
     
     const mealSettings = settings[mealType];
+    
+    // Add null check for mealSettings
+    if (!mealSettings) {
+      return { status: 'disabled', label: 'Not Configured' };
+    }
+    
     const { enabled, autoSwitch, openTime, closeTime } = mealSettings;
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

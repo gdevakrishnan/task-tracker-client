@@ -1,3 +1,4 @@
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './components/layout/AdminLayout';
 
@@ -24,6 +25,13 @@ import CustomTasks from './components/admin/CustomTasks';
 import AttendanceManagement from './components/admin/AttendanceManagement';
 import NotificationManagement from './components/admin/NotificationManagement';
 import SalaryManagement from './components/admin/SalaryManagement';
+
+// Test Management Components - Lazy loaded to prevent initialization in worker sessions
+const GenerateQuestions = lazy(() => import('./components/admin/GenerateQuestions'));
+const QuestionHistory = lazy(() => import('./components/admin/QuestionHistory'));
+const EmployeeScores = lazy(() => import('./components/admin/EmployeeScores'));
+const GlobalScoreboard = lazy(() => import('./components/admin/GlobalScoreboard'));
+import QuickTest from './components/common/QuickTest';
 
 // Protected route component
 import PrivateRoute from './components/common/PrivateRoute';
@@ -130,6 +138,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="/worker/login" element={<WorkerLogin />} />
+          <Route path="/quick-test" element={<QuickTest />} />
 
           {/* NEW PASSWORD ROUTES */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -154,6 +163,29 @@ function App() {
               <Route path="custom-tasks" element={<CustomTasks />} />
               <Route path="notifications" element={<NotificationManagement />} />
               <Route path="settings" element={<Settings />} />
+              
+              {/* Test Management Routes - Wrapped with Suspense for lazy loading */}
+              <Route path="test/generate-questions" element={
+                <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div></div>}>
+                  <GenerateQuestions />
+                </Suspense>
+              } />
+              <Route path="test/question-history" element={
+                <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div></div>}>
+                  <QuestionHistory />
+                </Suspense>
+              } />
+              <Route path="test/employee-scores" element={
+                <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div></div>}>
+                  <EmployeeScores />
+                </Suspense>
+              } />
+              <Route path="test/global-scoreboard" element={
+                <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div></div>}>
+                  <GlobalScoreboard />
+                </Suspense>
+              } />
+              
               {/* Catch-all route for unknown admin paths */}
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Route>
@@ -162,7 +194,7 @@ function App() {
           {/* Protected Worker routes */}
           <Route element={<PrivateRoute allowedRoles={['worker']} />}>
             <Route path="/worker/*" element={<WorkerDashboard />}>
-              {/* You can add nested worker routes here if needed */}
+              {/* Worker routes are handled inside WorkerDashboard component */}
               <Route path="*" element={<Navigate to="/worker" replace />} />
             </Route>
           </Route>

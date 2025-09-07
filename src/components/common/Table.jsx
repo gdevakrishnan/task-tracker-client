@@ -27,10 +27,18 @@ const Table = ({
               <th
                 key={index}
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 ${column.headerAlign || 'text-center'}`}
                 style={column.width ? { width: column.width } : {}}
+                title={column.description || column.header}
               >
-                {column.header}
+                <div className="font-bold text-gray-700">
+                  {column.header}
+                </div>
+                {column.description && (
+                  <div className="text-xs font-normal text-gray-500 mt-1">
+                    {column.description}
+                  </div>
+                )}
               </th>
             ))}
           </tr>
@@ -56,7 +64,8 @@ const Table = ({
                   return (
                     <td
                       key={`${rowIndex}-${colIndex}`}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 ${column.align || 'text-center'}`}
+                      title={column.cellDescription ? column.cellDescription(row, rowIndex) : ''}
                     >
                       {column.render
                         ? column.render(row, rowIndex)

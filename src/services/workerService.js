@@ -1,23 +1,10 @@
-import api from '../hooks/useAxios';
-import { getAuthToken } from '../utils/authUtils';
+import api from './api';
 import uploadUtils from '../utils/uploadUtils';
 
 export const getUniqueId = async () => {
   try {
-    const token = getAuthToken();
-    if (!token) {
-      console.warn('No auth token available');
-      return [];
-    }
-
-    const response = await api.get('/workers/generate-id', {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await api.get('/workers/generate-id');
     console.log(response.data);
-
     return response.data || [];
   } catch (error) {
     console.error('Workers fetch error:', error);
@@ -28,7 +15,6 @@ export const getUniqueId = async () => {
 export const createWorker = async (workerData) => {
   try {
     console.log('Worker data:', workerData);
-    const token = getAuthToken();
 
     // Enhanced client-side validation
     if (!workerData.name || workerData.name.trim() === '') {
@@ -53,12 +39,7 @@ export const createWorker = async (workerData) => {
     const urlResponse = await uploadUtils(workerData.photo);
     workerData.photo = urlResponse;
 
-    const response = await api.post('/workers', workerData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await api.post('/workers', workerData);
     return response.data;
   } catch (error) {
     console.error('Worker creation error:', error.response?.data || error);
@@ -68,18 +49,7 @@ export const createWorker = async (workerData) => {
 
 export const getWorkers = async (subdomain) => {
   try {
-    const token = getAuthToken();
-    if (!token) {
-      console.warn('No auth token available');
-      return [];
-    }
-
-    const response = await api.post('/workers/all', subdomain, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await api.post('/workers/all', subdomain);
     return response.data || [];
   } catch (error) {
     console.error('Workers fetch error:', error);
@@ -89,13 +59,7 @@ export const getWorkers = async (subdomain) => {
 
 export const getPublicWorkers = async (subdomain) => {
   try {
-    const token = getAuthToken();
-    const response = await api.post('/workers/public', subdomain, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await api.post('/workers/public', subdomain);
     return response.data || [];
   } catch (error) {
     console.error('Public workers fetch error:', error);
@@ -105,20 +69,12 @@ export const getPublicWorkers = async (subdomain) => {
 
 export const updateWorker = async (id, workerData) => {
   try {
-    const token = getAuthToken();
-    const formData = new FormData();
-
     if (workerData.photo) {
       const urlResponse = await uploadUtils(workerData.photo);
       workerData.photo = urlResponse;
     }
 
-    const response = await api.put(`/workers/${id}`, workerData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await api.put(`/workers/${id}`, workerData);
     return response.data;
   } catch (error) {
     console.error('Update Worker Error:', {
@@ -131,10 +87,7 @@ export const updateWorker = async (id, workerData) => {
 };
 export const deleteWorker = async (id) => {
   try {
-    const token = getAuthToken(); // Get the authentication token
-    const response = await api.delete(`/workers/${id}`, {
-      headers: { Authorization: `Bearer ${token}` } // Add authorization header
-    });
+    const response = await api.delete(`/workers/${id}`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : new Error('Failed to delete worker');

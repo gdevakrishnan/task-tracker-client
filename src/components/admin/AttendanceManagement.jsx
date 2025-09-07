@@ -291,7 +291,7 @@ function processAttendanceByDay(attendanceData) {
         const csvRows = processedAttendance.map(record => [
             record?.name || 'Unknown',
             record?.rfid || 'Unknown',
-            record?.departmentName || 'Unknown',
+            record?.departmentName || 'N/A',
             record.date || 'Unknown',
             record.inTimes.join(' | '),
             record.outTimes.join(' | '),
@@ -356,7 +356,7 @@ function processAttendanceByDay(attendanceData) {
         {
             header: 'Department',
             accessor: 'departmentName',
-            render: (record) => record?.departmentName || 'Unknown'
+            render: (record) => record?.departmentName || 'N/A'
         },
         {
             header: 'Date',

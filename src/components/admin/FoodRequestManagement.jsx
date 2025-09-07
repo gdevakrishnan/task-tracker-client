@@ -61,10 +61,10 @@ const FoodRequestManagement = () => {
     try {
       const data = await getTodayRequests({ subdomain, mealType });
       const formatted = data.map((req) => ({
-        name: req.worker?.name || 'N/A',
-        rfid: req.worker?.rfid || 'N/A',
+        name: req.worker?.name || 'Unknown Worker',
+        rfid: req.worker?.rfid || 'No ID',
         photo: req.worker?.photo || '',
-        department: req.department?.name || 'N/A',
+        department: req.department?.name || 'No Department',
         mealType: req.mealType,
         date: new Date(req.date).toLocaleString(),
       }));

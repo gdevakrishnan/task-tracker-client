@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaBars, FaTimes } from 'react-icons/fa';
+import { FaBars, FaTimes, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { FiLogOut } from "react-icons/fi";
 import appContext from '../../context/AppContext';
 
@@ -11,6 +11,7 @@ const Sidebar = ({
   onLogout
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedDropdowns, setExpandedDropdowns] = useState({});
   const location = useLocation();
 
   const { subdomain } = useContext(appContext);
@@ -21,6 +22,17 @@ const Sidebar = ({
 
   const closeSidebar = () => {
     setIsOpen(false);
+  };
+
+  const toggleDropdown = (key) => {
+    setExpandedDropdowns(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const isAnyChildActive = (children) => {
+    return children.some(child => location.pathname === child.to);
   };
 
   return (
@@ -94,30 +106,127 @@ const Sidebar = ({
 
         {/* Navigation Links */}
         <nav className="mt-5 px-2 space-y-1">
-          {links.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`
-                group flex items-center px-2 py-2 text-base font-medium rounded-md 
-                hover:bg-gray-700 hover:text-white 
-                transition-all duration-300 
-                ${location.pathname === link.to 
-                  ? 'bg-gray-900 text-white' 
-                  : 'text-gray-300'
-                }
-                hover:pl-4 // Slide effect
-              `}
-              onClick={closeSidebar}
-            >
-              {link.icon && (
-                <span className="mr-3 h-6 w-6 flex items-center justify-center">
-                  {link.icon}
-                </span>
-              )}
-              {link.label}
-            </Link>
-          ))}
+          {links.map((link, index) => {
+            // Handle header items
+            if (link.isHeader) {
+              return (
+                <div key={`header-${index}`} className="pt-4 pb-2">
+                  <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {link.label}
+                  </h3>
+                </div>
+              );
+            }
+            
+            // Handle dropdown items
+            if (link.isDropdown) {
+              const dropdownKey = `dropdown-${index}`;
+              const isExpanded = expandedDropdowns[dropdownKey];
+              const hasActiveChild = isAnyChildActive(link.children || []);
+              
+              return (
+                <div key={dropdownKey}>
+                  <button
+                    onClick={() => toggleDropdown(dropdownKey)}
+                    className={`
+                      group flex items-center w-full px-2 py-2 text-base font-medium rounded-md 
+                      hover:bg-gray-700 hover:text-white 
+                      transition-all duration-300 
+                      ${hasActiveChild 
+                        ? 'bg-gray-900 text-white' 
+                        : 'text-gray-300'
+                      }
+                      hover:pl-4
+                    `}
+                  >
+                    {link.icon && (
+                      <span className="mr-3 h-6 w-6 flex items-center justify-center">
+                        {link.icon}
+                      </span>
+                    )}
+                    <span className="flex-1">{link.label}</span>
+                    {link.badge && (
+                      <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                        {link.badge}
+                      </span>
+                    )}
+                    <span className="ml-2">
+                      {isExpanded ? 
+                        <FaChevronDown className="h-4 w-4" /> : 
+                        <FaChevronRight className="h-4 w-4" />
+                      }
+                    </span>
+                  </button>
+                  
+                  {/* Dropdown children */}
+                  <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="pl-4 space-y-1 mt-1">
+                      {link.children?.map((child) => (
+                        <Link
+                          key={child.to}
+                          to={child.to}
+                          className={`
+                            group flex items-center px-2 py-2 text-sm font-medium rounded-md 
+                            hover:bg-gray-700 hover:text-white 
+                            transition-all duration-300 
+                            ${location.pathname === child.to 
+                              ? 'bg-gray-700 text-white border-l-2 border-blue-500' 
+                              : 'text-gray-400'
+                            }
+                            hover:pl-4
+                          `}
+                          onClick={closeSidebar}
+                        >
+                          {child.icon && (
+                            <span className="mr-3 h-5 w-5 flex items-center justify-center">
+                              {child.icon}
+                            </span>
+                          )}
+                          <span className="flex-1">{child.label}</span>
+                          {child.badge && (
+                            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                              {child.badge}
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
+            // Handle regular navigation items
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`
+                  group flex items-center px-2 py-2 text-base font-medium rounded-md 
+                  hover:bg-gray-700 hover:text-white 
+                  transition-all duration-300 
+                  ${location.pathname === link.to 
+                    ? 'bg-gray-900 text-white' 
+                    : 'text-gray-300'
+                  }
+                  hover:pl-4 // Slide effect
+                `}
+                onClick={closeSidebar}
+              >
+                {link.icon && (
+                  <span className="mr-3 h-6 w-6 flex items-center justify-center">
+                    {link.icon}
+                  </span>
+                )}
+                <span className="flex-1">{link.label}</span>
+                {link.badge && (
+                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                    {link.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Logout button */}

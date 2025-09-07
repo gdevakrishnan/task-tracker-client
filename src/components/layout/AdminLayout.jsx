@@ -14,12 +14,18 @@ import {
   FaRegCalendarCheck,
   FaRegBell,
   FaDollarSign,
+  FaQuestionCircle,
+  FaHistory,
+  FaTrophy,
+  FaChartBar,
   FaAsterisk
 } from 'react-icons/fa';
+
 import { useAuth } from '../../hooks/useAuth';
 import { getAllLeaves } from '../../services/leaveService';
 import { getAllComments } from '../../services/commentService';
 import Sidebar from './Sidebar';
+import QuestionGenerationTracker from '../admin/QuestionGenerationTracker';
 import appContext from '../../context/AppContext';
 import { IoMdSettings } from 'react-icons/io';
 
@@ -27,6 +33,10 @@ const AdminLayout = () => {
   const { user, logout } = useAuth();
   const [pendingLeaves, setPendingLeaves] = useState(0);
   const [newComments, setNewComments] = useState(0);
+  
+  // Global question generation tracker state (for future use)
+  const [showGlobalTracker] = useState(false);
+  
   const navigate = useNavigate();
   const { subdomain } = useContext(appContext);
 
@@ -141,6 +151,35 @@ const AdminLayout = () => {
       label: 'Comments',
       badge: newComments > 0 ? newComments : null
     },
+    
+    // Test Management Dropdown Section
+    {
+      label: 'Test Management',
+      isDropdown: true,
+      icon: <FaQuestionCircle style={{ color: '#8B5CF6' }} />,
+      children: [
+        {
+          to: '/admin/test/generate-questions',
+          icon: <FaQuestionCircle style={{ color: '#3B82F6' }} />,
+          label: 'Generate Questions'
+        },
+        {
+          to: '/admin/test/question-history',
+          icon: <FaHistory style={{ color: '#10B981' }} />,
+          label: 'Questions History'
+        },
+        {
+          to: '/admin/test/employee-scores',
+          icon: <FaChartBar style={{ color: '#F59E0B' }} />,
+          label: 'Employee Scores'
+        },
+        {
+          to: '/admin/test/global-scoreboard',
+          icon: <FaTrophy style={{ color: '#EF4444' }} />,
+          label: 'Global Scoreboard'
+        }
+      ]
+    },
     {
       to: '/admin/settings',
       icon: <IoMdSettings style={{ color: '#9B9B9B' }}/>,
@@ -162,6 +201,14 @@ const AdminLayout = () => {
           <Outlet /> {/* Correct import and usage */}
         </main>
       </div>
+      
+      {/* Global Question Generation Tracker - Available for future enhancements */}
+      <QuestionGenerationTracker
+        isVisible={showGlobalTracker}
+        onClose={() => {}}
+        generationData={null}
+        isGenerating={false}
+      />
     </div>
   );
 };

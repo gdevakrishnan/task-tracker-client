@@ -8,8 +8,10 @@ import {
   FaComments,
   FaPizzaSlice,
   FaRegCalendarCheck,
-  FaRegBell
-
+  FaRegBell,
+  FaClipboardList,
+  FaBook,
+  FaGraduationCap
 } from 'react-icons/fa';
 import { useAuth } from '../../hooks/useAuth';
 import { getMyLeaves } from '../../services/leaveService';
@@ -84,6 +86,23 @@ const WorkerLayout = ({ children }) => {
       to: '/worker/attendance',
       icon: <FaRegCalendarCheck style={{ color: '#7ED321' }} />,
       label: 'Attendance Report'
+    },
+    {
+      isDropdown: true,
+      icon: <FaGraduationCap style={{ color: '#FF6B35' }} />,
+      label: 'Test',
+      children: [
+        {
+          to: '/worker/tests',
+          icon: <FaClipboardList style={{ color: '#FF6B35' }} />,
+          label: 'My Test'
+        },
+        {
+          to: '/worker/daily-topics',
+          icon: <FaBook style={{ color: '#8B5CF6' }} />,
+          label: 'Daily Topics'
+        }
+      ]
     },
     {
       to: '/worker/food-request',
