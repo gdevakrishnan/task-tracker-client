@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { createLeave } from '../../services/leaveService';
 import Card from '../common/Card';
@@ -10,24 +11,25 @@ import appContext from '../../context/AppContext';
 const ApplyForLeave = () => {
   const { user } = useAuth();
   const { subdomain } = useContext(appContext);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     leaveType: 'Annual Leave',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
     totalDays: 0,
     reason: '',
-    document: null
+    document: null,
+    startTime: '',
+    endTime: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Calculate total days when dates change
   const calculateTotalDays = (start, end) => {
     if (!start || !end) return 0;
     const startDate = new Date(start);
     const endDate = new Date(end);
     if (isNaN(startDate) || isNaN(endDate)) return 0;
 
-    // Calculate difference in days and add 1 (inclusive)
     const diffTime = Math.abs(endDate - startDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays;
@@ -38,12 +40,21 @@ const ApplyForLeave = () => {
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
 
-      // Update total days if date fields change
-      if (name === 'startDate' || name === 'endDate') {
+      if ((name === 'startDate' || name === 'endDate') && updated.leaveType !== 'Permission') {
         updated.totalDays = calculateTotalDays(
           name === 'startDate' ? value : prev.startDate,
           name === 'endDate' ? value : prev.endDate
         );
+      }
+
+      if (name === 'leaveType') {
+        updated.startTime = '';
+        updated.endTime = '';
+        if (value === 'Permission') {
+          updated.totalDays = 0;
+        } else {
+          updated.totalDays = calculateTotalDays(updated.startDate, updated.endDate);
+        }
       }
 
       return updated;
@@ -60,7 +71,7 @@ const ApplyForLeave = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!subdomain || subdomain == 'main') {
+    if (!subdomain || subdomain === 'main') {
       toast.error('Subdomain is missing, check the URL');
       return;
     }
@@ -70,27 +81,47 @@ const ApplyForLeave = () => {
       return;
     }
 
+    if (formData.leaveType === 'Permission' && (!formData.startTime || !formData.endTime)) {
+      toast.error('Please provide a start and end time for your permission request.');
+      return;
+    }
+    
     setIsSubmitting(true);
+    const formPayload = new FormData();
+    formPayload.append('leaveType', formData.leaveType);
+    formPayload.append('startDate', formData.startDate);
+    formPayload.append('endDate', formData.endDate);
+    formPayload.append('reason', formData.reason);
+    // FIX: Append the subdomain to the form data
+    formPayload.append('subdomain', subdomain);
+    formPayload.append('totalDays', formData.totalDays);
+    if (formData.document) {
+      formPayload.append('document', formData.document);
+    }
+    if (formData.leaveType === 'Permission') {
+      formPayload.append('startTime', formData.startTime);
+      formPayload.append('endTime', formData.endTime);
+    }
 
     try {
-      const token = localStorage.getItem('token');
-      await createLeave({
-        ...formData,
-        subdomain,
-        totalDays: parseInt(formData.totalDays)
-      });
-
+      await createLeave(formPayload);
       toast.success('Leave application submitted successfully!');
 
-      // Reset form
       setFormData({
         leaveType: 'Annual Leave',
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0],
         totalDays: 0,
         reason: '',
-        document: null
+        document: null,
+        startTime: '',
+        endTime: ''
       });
+      
+      // Navigate to leave requests page after successful submission
+      setTimeout(() => {
+        navigate('/worker/leave-requests');
+      }, 1500);
     } catch (error) {
       toast.error(error.message || 'Failed to submit leave application');
     } finally {
@@ -118,6 +149,7 @@ const ApplyForLeave = () => {
                 <option value="Annual Leave">Annual Leave</option>
                 <option value="Sick Leave">Sick Leave</option>
                 <option value="Personal Leave">Personal Leave</option>
+                <option value="Permission">Permission</option>
               </select>
             </div>
 
@@ -130,8 +162,9 @@ const ApplyForLeave = () => {
                 className="form-input"
                 value={formData.totalDays}
                 onChange={handleChange}
-                min="1"
+                min="0"
                 required
+                readOnly
               />
             </div>
 
@@ -162,6 +195,36 @@ const ApplyForLeave = () => {
                 required
               />
             </div>
+
+            {formData.leaveType === 'Permission' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="startTime" className="form-label">Start Time</label>
+                  <input
+                    type="time"
+                    id="startTime"
+                    name="startTime"
+                    className="form-input"
+                    value={formData.startTime}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="endTime" className="form-label">End Time</label>
+                  <input
+                    type="time"
+                    id="endTime"
+                    name="endTime"
+                    className="form-input"
+                    value={formData.endTime}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="form-group mb-6">

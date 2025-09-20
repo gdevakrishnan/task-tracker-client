@@ -15,8 +15,10 @@ export const getAllLeaves = async (leaveData) => {
 
 export const getMyLeaves = async (leaveData) => {
   try {
+    console.log('Fetching leaves for subdomain:', leaveData.subdomain);
     const response = await api.get(`/leaves/${leaveData.subdomain}/1`);
     console.log('Leaves Service Response:', response.data);
+    console.log('Number of leaves found:', Array.isArray(response.data) ? response.data.length : 'Not an array');
 
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -28,31 +30,52 @@ export const getMyLeaves = async (leaveData) => {
 // Create leave
 export const createLeave = async (leaveData) => {
   try {
-    // Validation
-    if (!leaveData.subdomain || leaveData.subdomain == 'main') {
-      throw new Error('Subdomain is missing check the URL');
-    }
-    if (!leaveData.reason || leaveData.reason.trim() === '') {
-      throw new Error('Reason is required and cannot be empty');
-    }
-    if (!leaveData.startDate) {
-      throw new Error('Start date is required');
-    }
-    if (!leaveData.endDate) {
-      throw new Error('End date is required');
-    }
-    if (!leaveData.leaveType) {
-      throw new Error('Leave type is required');
+    // Check if leaveData is already a FormData object
+    let formData;
+    let subdomain, reason, startDate, endDate, leaveType;
+    
+    if (leaveData instanceof FormData) {
+      // If it's already FormData, extract values for validation
+      formData = leaveData;
+      subdomain = formData.get('subdomain');
+      reason = formData.get('reason');
+      startDate = formData.get('startDate');
+      endDate = formData.get('endDate');
+      leaveType = formData.get('leaveType');
+    } else {
+      // If it's a regular object, create FormData
+      subdomain = leaveData.subdomain;
+      reason = leaveData.reason;
+      startDate = leaveData.startDate;
+      endDate = leaveData.endDate;
+      leaveType = leaveData.leaveType;
+      
+      formData = new FormData();
+      Object.keys(leaveData).forEach(key => {
+        if (key === 'document' && leaveData.document) {
+          formData.append('document', leaveData.document, leaveData.document.name);
+        } else {
+          formData.append(key, leaveData[key]);
+        }
+      });
     }
 
-    const formData = new FormData();
-    Object.keys(leaveData).forEach(key => {
-      if (key === 'document' && leaveData.document) {
-        formData.append('document', leaveData.document, leaveData.document.name);
-      } else {
-        formData.append(key, leaveData[key]);
-      }
-    });
+    // Validation
+    if (!subdomain || subdomain === 'main') {
+      throw new Error('Subdomain is missing check the URL');
+    }
+    if (!reason || reason.trim() === '') {
+      throw new Error('Reason is required and cannot be empty');
+    }
+    if (!startDate) {
+      throw new Error('Start date is required');
+    }
+    if (!endDate) {
+      throw new Error('End date is required');
+    }
+    if (!leaveType) {
+      throw new Error('Leave type is required');
+    }
 
     const response = await api.post('/leaves', formData, {
       headers: {

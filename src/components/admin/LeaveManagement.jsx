@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
-import { FaChevronDown, FaChevronUp, FaSearch } from 'react-icons/fa';
+import { format } from 'date-fns';
+import { FaChevronDown, FaChevronUp, FaSearch, FaBusinessTime } from 'react-icons/fa';
 import { getAllLeaves, markLeavesAsViewedByAdmin, updateLeaveStatus } from '../../services/leaveService';
 import appContext from '../../context/AppContext';
 import Spinner from '../common/Spinner';
@@ -60,7 +61,6 @@ const LeaveManagement = () => {
 
     try {
       const updatedLeave = await updateLeaveStatus(leaveId, status, leaveData);
-      // Update the local state with the response that includes populated worker data
       setLeaves(leaves.map(leave =>
         leave._id === leaveId ? { ...leave, status, worker: updatedLeave.worker || leave.worker } : leave
       ));
@@ -78,29 +78,96 @@ const LeaveManagement = () => {
     setActiveView('all');
   };
 
+  // Format time for display (same as worker's page)
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const time = new Date();
+      time.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return format(time, 'h:mm a');
+    } catch (error) {
+      return timeString;
+    }
+  };
+
+  // Calculate permission duration in hours and minutes
+  const calculatePermissionDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return '';
+    
+    try {
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
+      
+      const startTotalMinutes = startHours * 60 + startMinutes;
+      const endTotalMinutes = endHours * 60 + endMinutes;
+      
+      const durationMinutes = endTotalMinutes - startTotalMinutes;
+      
+      if (durationMinutes <= 0) return '';
+      
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = durationMinutes % 60;
+      
+      if (hours > 0 && minutes > 0) {
+        return `(${hours}h ${minutes}m)`;
+      } else if (hours > 0) {
+        return `(${hours}h)`;
+      } else {
+        return `(${minutes}m)`;
+      }
+    } catch (error) {
+      return '';
+    }
+  };
+
   const LeaveItem = ({ leave }) => (
     <Card
-    className={`mb-4 border-t-4 ${
-      leave.status === 'Approved' ? 'border-green-500' :
-      leave.status === 'Rejected' ? 'border-red-500' :
-      'border-yellow-500'
-    }`}
-  >
+      className={`mb-4 border-t-4 ${
+        leave.status === 'Approved' ? 'border-green-500' :
+        leave.status === 'Rejected' ? 'border-red-500' :
+        'border-yellow-500'
+      } ${
+        leave.leaveType === 'Permission' ? 'bg-blue-50' : ''
+      }`}
+    >
       <div className="flex justify-between">
         <div>
-          <p className="font-medium">{leave.worker?.name || 'Unknown Employee'}</p>
+          <div className="flex items-center mb-1">
+            {leave.leaveType === 'Permission' && (
+              <FaBusinessTime className="mr-2 text-blue-500" size={16} />
+            )}
+            <p className="font-medium">{leave.worker?.name || 'Unknown Employee'}</p>
+          </div>
           <p className="text-sm text-gray-500">
             {leave.leaveType} • {new Date(leave.createdAt).toLocaleString()}
           </p>
           <p className="text-sm text-gray-500">
             From: {new Date(leave.startDate).toLocaleDateString()} - To: {new Date(leave.endDate).toLocaleDateString()}
           </p>
+          {/* Enhanced time display for permissions */}
+          {leave.leaveType === 'Permission' && leave.startTime && leave.endTime && (
+            <p className="text-sm text-blue-600 font-medium">
+              Time: {formatTime(leave.startTime)} - {formatTime(leave.endTime)}
+              {calculatePermissionDuration(leave.startTime, leave.endTime) && (
+                <span className="text-gray-500 ml-1">
+                  {calculatePermissionDuration(leave.startTime, leave.endTime)}
+                </span>
+              )}
+            </p>
+          )}
           <p className="text-sm text-gray-500">
-            Total days: {leave.totalDays}
+            {leave.leaveType === 'Permission' ? (
+              calculatePermissionDuration(leave.startTime, leave.endTime) ? 
+                `Duration: ${calculatePermissionDuration(leave.startTime, leave.endTime).replace(/[()]/g, '')}` :
+                'Duration: Permission request'
+            ) : (
+              `Total days: ${leave.totalDays || 0}`
+            )}
           </p>
         </div>
         <span
-          className={` px-2 h-8 flex justify-center items-center rounded-full text-xs ${leave.status === 'Approved'
+          className={`px-2 h-8 flex justify-center items-center rounded-full text-xs ${leave.status === 'Approved'
               ? 'bg-green-100 text-green-800'
               : leave.status === 'Rejected'
                 ? 'bg-red-100 text-red-800'
@@ -116,7 +183,7 @@ const LeaveManagement = () => {
       {leave.status === 'Pending' && (
         <div className="mt-4 flex space-x-2">
           <button
-            onClick={() => handleReview(leave._id, 'Approved',leave)}
+            onClick={() => handleReview(leave._id, 'Approved', leave)}
             disabled={processing[leave._id]}
             className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
           >
